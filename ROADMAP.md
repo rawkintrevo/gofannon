@@ -20,6 +20,9 @@ perform specific functions and can be extended or customized based on your needs
 | Contribution Guide                | [How to Contribute](docs/how_to_contribute.md) | :white_check_mark: Implemented |  
 | How-To: Contribute a Tool         |   | :construction: Under Construction     |
 | How-To: Import/Export |   | :construction: Under Construction     |
+| SmolAgents - Hello World |   | :triangular_flag_on_post: Roadmap     |
+| LangChain -  Hello World |   | :triangular_flag_on_post: Roadmap    |
+| Bedrock - SQL Analytics Agent |   | :triangular_flag_on_post: Roadmap     |
 
 ## Tools Overview
 
