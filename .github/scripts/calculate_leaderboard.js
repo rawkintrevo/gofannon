@@ -50,7 +50,7 @@ async function calculateScores() {
 
 // Generate markdown table
 function generateMarkdown(scores) {
-    let md = '| Contributor | Points |\n| :--- | ---: |\n';
+    let md = '---\nlayout: leaderboard\ntitle: Leaderboard\n---\n| Player | Score |\n| :--- | ---: |\n';
     scores.forEach(({ user, score }) => {
         md += `| [@${user}](https://github.com/${user}) | ${score} |\n`;
     });
