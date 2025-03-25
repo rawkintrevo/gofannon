@@ -11,41 +11,36 @@ const pointsConfig = JSON.parse(
     readFileSync('.github/points_config.json', 'utf8')
 );
 
-// Get all contributions (issues and PRs)
-async function getContributions() {
-    const [issues, prs] = await Promise.all([
-        octokit.paginate(octokit.rest.issues.listForRepo, {
+// Get only closed PRs
+async function getClosedPRs() {
+    try {
+        return await octokit.paginate(octokit.rest.pulls.list, {
             owner: process.env.REPO_OWNER,
             repo: process.env.REPO_NAME,
-            state: 'all',
-            per_page: 100 // Explicitly request maximum items per page
-        }),
-        octokit.paginate(octokit.rest.pulls.list, {
-            owner: process.env.REPO_OWNER,
-            repo: process.env.REPO_NAME,
-            state: 'all',
+            state: 'closed',
             per_page: 100
-        })
-    ]);
-
-    return [...issues, ...prs].filter(item =>
-        item.user.type === 'User' &&
-        !item.user.login.includes('[bot]')
-    );
+        });
+    } catch (error) {
+        console.error('Error fetching closed PRs:', error);
+        throw error;
+    }
 }
 
-// Calculate scores
+// Calculate scores based only on closed PRs
 async function calculateScores() {
-    const contributions = await getContributions();
+    const closedPRs = await getClosedPRs();
     const scores = {};
 
-    contributions.forEach(contribution => {
-        const user = contribution.user.login;
-        const labels = contribution.labels.map(l => l.name);
+    closedPRs.forEach(pr => {
+        // Only count merged PRs or specifically closed ones
+        if (pr.user && pr.user.type === 'User' && !pr.user.login.includes('[bot]')) {
+            const user = pr.user.login;
+            const labels = pr.labels.map(l => l.name);
 
-        labels.forEach(label => {
-            scores[user] = (scores[user] || 0) + (pointsConfig[label] || 0);
-        });
+            labels.forEach(label => {
+                scores[user] = (scores[user] || 0) + (pointsConfig[label] || 0);
+            });
+        }
     });
 
     return Object.entries(scores)
@@ -69,7 +64,7 @@ function generateMarkdown(scores) {
         const markdown = generateMarkdown(scores);
         mkdirSync('website', { recursive: true });
         writeFileSync('website/leaderboard.md', markdown);
-        console.log('Successfully updated leaderboard!');
+        console.log('Successfully updated leaderboard with closed PRs only!');
     } catch (error) {
         console.error('Error updating leaderboard:', error);
         process.exit(1);
