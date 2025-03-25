@@ -17,6 +17,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: '.github/scripts/package-lock.json'
 
       - name: Install dependencies
         run: |
@@ -34,4 +35,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: 'Update leaderboard rankings'
-          file_pattern: 'website/leaderboard.md'  
+          file_pattern: 'website/leaderboard.md'
