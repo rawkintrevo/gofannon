@@ -12,6 +12,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/The-AI-Alliance/gofannon.git
+          git fetch upstream
+        if: contains(github.repository, 'fork')
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -29,7 +35,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_OWNER: ${{ github.repository_owner }}
-          REPO_NAME: ${{ github.event.repository.name }}
+          REPO_NAME: ${{ github.event.repository.name || github.repository }}
 
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v4

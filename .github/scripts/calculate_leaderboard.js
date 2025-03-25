@@ -18,16 +18,17 @@ async function getContributions() {
             owner: process.env.REPO_OWNER,
             repo: process.env.REPO_NAME,
             state: 'all',
+            per_page: 100 // Explicitly request maximum items per page
         }),
         octokit.paginate(octokit.rest.pulls.list, {
             owner: process.env.REPO_OWNER,
             repo: process.env.REPO_NAME,
             state: 'all',
+            per_page: 100
         })
     ]);
 
     return [...issues, ...prs].filter(item =>
-        item.state === 'closed' &&
         item.user.type === 'User' &&
         !item.user.login.includes('[bot]')
     );
@@ -73,4 +74,4 @@ function generateMarkdown(scores) {
         console.error('Error updating leaderboard:', error);
         process.exit(1);
     }
-})();  
+})();
