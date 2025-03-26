@@ -89,7 +89,16 @@ layout: default
 
 <div class="leaderboard-container">
     <h1 class="leaderboard-heading">LEADERBOARD</h1>
-
+    <div class="text-end mb-4">
+        <button
+                type="button"
+                class="btn btn-outline-success"
+                data-bs-toggle="modal"
+                data-bs-target="#scoringModal"
+        >
+            🕹️ How Scoring Works?
+        </button>
+    </div>
     <!-- Animated GIF -->
     <img
             src="{{ '/assets/images/leaderboard-animation.gif' | relative_url }}"
@@ -119,3 +128,5 @@ layout: default
         });
     });
 </script>
+
+{% include scoring.html %}
