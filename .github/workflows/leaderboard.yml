@@ -53,7 +53,7 @@ jobs:
             ls -la website/leaderboard.md
             ls -la website/_includes/scoring.html
             ls -la .github/scripts/package-lock.json
-          
+
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
