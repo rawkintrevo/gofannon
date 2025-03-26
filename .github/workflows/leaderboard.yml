@@ -47,10 +47,17 @@ jobs:
           REPO_OWNER: ${{ env.UPSTREAM_OWNER || github.repository_owner }}
           REPO_NAME: ${{ env.UPSTREAM_REPO || github.event.repository.name }}
 
+      - name: Verify files to commit
+        run: |
+            echo "Files to be committed:"
+            ls -la website/leaderboard.md
+            ls -la website/_includes/scoring.html
+            ls -la .github/scripts/package-lock.json
+          
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: 'Update leaderboard rankings and scoring explanation'
           file_pattern: |
             website/leaderboard.md
-            website/_includes/scoring.html  
+            website/_includes/scoring.html
