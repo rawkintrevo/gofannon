@@ -61,3 +61,5 @@ jobs:
           file_pattern: |
             website/leaderboard.md
             website/_includes/scoring.html
+            .github/scripts/package-lock.json
+            
