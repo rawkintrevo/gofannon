@@ -58,8 +58,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: 'Update leaderboard rankings and scoring explanation'
-          file_pattern: |
-            website/leaderboard.md
-            website/_includes/scoring.html
-            .github/scripts/package-lock.json
-            
+          
