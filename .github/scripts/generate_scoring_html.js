@@ -1,12 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
-// Load points config
-const configPath = path.resolve(process.env.POINTS_CONFIG);
-const pointsConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+try {
+    // Load points config
+    const configPath = path.resolve(process.env.POINTS_CONFIG);
+    console.log(`Loading points config from: ${configPath}`);
+    const pointsConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log('Loaded points config:', pointsConfig);
 
-// Generate modal HTML
-const htmlContent = `  
+    // Generate modal HTML
+    const htmlContent = `  
 <div class="modal fade" id="scoringModal" tabindex="-1">  
   <div class="modal-dialog modal-lg">  
     <div class="modal-content bg-dark text-light">  
@@ -35,15 +38,18 @@ const htmlContent = `
             </div>  
           `).join('')}  
         </div>  
-  
-        <div class="mt-3 text-muted">  
-          <small>* Total score = sum of all label values from your merged PRs</small>  
-        </div>  
       </div>  
     </div>  
   </div>  
 </div>  
 `;
 
-// Write output file
-fs.writeFileSync(path.resolve(process.env.OUTPUT_FILE), htmlContent.trim());  
+    // Write output file
+    const outputPath = path.resolve(process.env.OUTPUT_FILE);
+    console.log(`Writing scoring HTML to: ${outputPath}`);
+    fs.writeFileSync(outputPath, htmlContent.trim());
+    console.log('Successfully generated scoring.html');
+} catch (error) {
+    console.error('Error generating scoring.html:', error);
+    process.exit(1);
+}  
