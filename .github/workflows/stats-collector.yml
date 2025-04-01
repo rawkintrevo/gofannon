@@ -30,7 +30,7 @@ jobs:
           GA_PROPERTY_ID: ${{ secrets.GA_PROPERTY_ID }}
           GA_CREDENTIALS: ${{ secrets.GA_CREDENTIALS }}
         run: |
-          python scripts/stats_collector.py
+          python .github/scripts/stats_collector.py
 
       - name: Commit and push changes
         if: success()
