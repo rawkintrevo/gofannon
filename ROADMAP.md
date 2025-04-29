@@ -7,33 +7,27 @@
 -->
 
 ## Complete ✅
-- [[Tool] file.ReadFile](https://github.com/The-AI-Alliance/gofannon/pull/270)
-- [Langchain and APOD Example](https://github.com/The-AI-Alliance/gofannon/pull/251)
-- [Fix typo incompatible](https://github.com/The-AI-Alliance/gofannon/pull/239)
-- [Add the Alliance CoC](https://github.com/The-AI-Alliance/gofannon/pull/230)
-- [Fix leaderboard issues](https://github.com/The-AI-Alliance/gofannon/pull/227)
-- [Fix Release Notes](https://github.com/The-AI-Alliance/gofannon/pull/226)
-- [Add example that 'fixes' issues and commits to git](https://github.com/The-AI-Alliance/gofannon/pull/217)
-- [[Example] Drop examples that contain complex_response](https://github.com/The-AI-Alliance/gofannon/pull/211)
-- [[NEW CORE CONTRIBUTOR] vedansh-5](https://github.com/The-AI-Alliance/gofannon/pull/203)
-- [Add documentation for contributing new agentic framework](https://github.com/The-AI-Alliance/gofannon/pull/201)
-- [[FRAMEWORK] Langflow](https://github.com/The-AI-Alliance/gofannon/pull/196)
-- [[Bug] Updating imports in Basic_Math.ipnb](https://github.com/The-AI-Alliance/gofannon/pull/184)
-- [[Bug] Example pip install points to old branch](https://github.com/The-AI-Alliance/gofannon/pull/183)
-- [[bug] Set git tracking in github.CommitFiles](https://github.com/The-AI-Alliance/gofannon/pull/181)
-- [[INFRA] Add bug report template](https://github.com/The-AI-Alliance/gofannon/pull/179)
-- [[TOOL] Wikipedia api](https://github.com/The-AI-Alliance/gofannon/pull/177)
-- [[BUG} Pydantic Mess](https://github.com/The-AI-Alliance/gofannon/pull/173)
-- [Add Release Notes to Weekly Releases](https://github.com/The-AI-Alliance/gofannon/pull/170)
+- [Add stats collector](https://github.com/rawkintrevo/gofannon/pull/58)
+- [drop file pattern](https://github.com/rawkintrevo/gofannon/pull/57)
+- [bug bash3](https://github.com/rawkintrevo/gofannon/pull/56)
+- [bug hunting](https://github.com/rawkintrevo/gofannon/pull/54)
+- [troubleshooting scoring explanation](https://github.com/rawkintrevo/gofannon/pull/53)
+- [Tinker tiker](https://github.com/rawkintrevo/gofannon/pull/50)
+- [working with forks](https://github.com/rawkintrevo/gofannon/pull/49)
+- [package lock](https://github.com/rawkintrevo/gofannon/pull/48)
+- [commit line bug](https://github.com/rawkintrevo/gofannon/pull/16)
+- [Add general impression](https://github.com/rawkintrevo/gofannon/pull/14)
+- [typo](https://github.com/rawkintrevo/gofannon/pull/12)
+- [Refactored. If this works, follow on PR to move these checks into gof…](https://github.com/rawkintrevo/gofannon/pull/10)
+- [Add review comment for non error case](https://github.com/rawkintrevo/gofannon/pull/8)
+- [re-add GITHUB_TOKEN](https://github.com/rawkintrevo/gofannon/pull/6)
+- [Double check env var name allignment](https://github.com/rawkintrevo/gofannon/pull/4)
+- [drop github_token](https://github.com/rawkintrevo/gofannon/pull/2)
+- [PR Review PR](https://github.com/rawkintrevo/gofannon/pull/1)
 
 ## Under Construction 🚧
 No items in progress
 
 
 ## In the Roadmap 📅
-- [Typo in Quickstart](https://github.com/The-AI-Alliance/gofannon/issues/256)
-- [Typo in File Name for Addition Documentation](https://github.com/The-AI-Alliance/gofannon/issues/255)
-- [Spelling Error in Exponents Documentation](https://github.com/The-AI-Alliance/gofannon/issues/254)
-- [Grammatical Error in Origins of the Name Gofannon](https://github.com/The-AI-Alliance/gofannon/issues/247)
-- [[Framework Proposal] Langgraph](https://github.com/The-AI-Alliance/gofannon/issues/237)
-- [[EXAMPLES] rerun `examples/smolagents+gofannon_quickstart.ipynb` to get rid of warnings and errors](https://github.com/The-AI-Alliance/gofannon/issues/176)
+No upcoming items
