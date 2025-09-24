@@ -74,57 +74,57 @@ class CommitFile(BaseTool):
             base_branch: str = "main") -> str:
         logger.debug(f"Committing file {file_path} to {owner}/{repo} on branch {branch}")
         api_url = f"https://api.github.com/repos/{owner}/{repo}"
-    headers = {"Authorization": f"token {self.api_key}"}
-
-    # --- Step 1: Ensure the branch exists ---
-    branch_url = f"{api_url}/git/ref/heads/{branch}"
-    branch_resp = requests.get(branch_url, headers=headers)
-
-    if branch_resp.status_code == 404:
-        # Branch doesn't exist -> create it
-        base_branch_url = f"{api_url}/git/ref/heads/{base_branch}"
-        base_resp = requests.get(base_branch_url, headers=headers)
-        if base_resp.status_code != 200:
-            raise Exception(f"Base branch '{base_branch}' not found: {base_resp.text}")
-        
-        base_sha = base_resp.json()["object"]["sha"]
-
-        create_branch_payload = {
-            "ref": f"refs/heads/{branch}",
-            "sha": base_sha
-        }
-        create_resp = requests.post(f"{api_url}/git/refs", headers=headers, json=create_branch_payload)
-        if create_resp.status_code != 201:
-            raise Exception(f"Error creating branch '{branch}': {create_resp.text}")
-        print(f"Branch '{branch}' created from '{base_branch}'.")
-    elif branch_resp.status_code != 200:
-        raise Exception(f"Error checking branch: {branch_resp.status_code} {branch_resp.text}")
-
-    # --- Step 2: Check if the file exists on that branch ---
-    file_url = f"{api_url}/contents/{file_path}"
-    response = requests.get(file_url, headers=headers, params={"ref": branch})
-
-    if response.status_code == 200:
-        sha = response.json()["sha"]
-    elif response.status_code == 404:
-        sha = None
-    else:
-        raise Exception(f"Error checking file: {response.status_code} {response.text}")
-
-    # --- Step 3: Prepare payload ---
-    payload = {
-        "message": commit_message,
-        "branch": branch,
-        "content": base64.b64encode(file_content.encode()).decode()
-    }
-    if sha:
-        payload["sha"] = sha
-
-    # --- Step 4: Commit the file ---
-    put_response = requests.put(file_url, headers=headers, json=payload)
+        headers = {"Authorization": f"token {self.api_key}"}
     
-    if put_response.status_code in [200, 201]:
-        print("File committed successfully!")
-        return put_response.json()
-    else:
-        raise Exception(f"Error committing file: {put_response.status_code} {put_response.text}")
+        # --- Step 1: Ensure the branch exists ---
+        branch_url = f"{api_url}/git/ref/heads/{branch}"
+        branch_resp = requests.get(branch_url, headers=headers)
+    
+        if branch_resp.status_code == 404:
+            # Branch doesn't exist -> create it
+            base_branch_url = f"{api_url}/git/ref/heads/{base_branch}"
+            base_resp = requests.get(base_branch_url, headers=headers)
+            if base_resp.status_code != 200:
+                raise Exception(f"Base branch '{base_branch}' not found: {base_resp.text}")
+            
+            base_sha = base_resp.json()["object"]["sha"]
+    
+            create_branch_payload = {
+                "ref": f"refs/heads/{branch}",
+                "sha": base_sha
+            }
+            create_resp = requests.post(f"{api_url}/git/refs", headers=headers, json=create_branch_payload)
+            if create_resp.status_code != 201:
+                raise Exception(f"Error creating branch '{branch}': {create_resp.text}")
+            print(f"Branch '{branch}' created from '{base_branch}'.")
+        elif branch_resp.status_code != 200:
+            raise Exception(f"Error checking branch: {branch_resp.status_code} {branch_resp.text}")
+    
+        # --- Step 2: Check if the file exists on that branch ---
+        file_url = f"{api_url}/contents/{file_path}"
+        response = requests.get(file_url, headers=headers, params={"ref": branch})
+    
+        if response.status_code == 200:
+            sha = response.json()["sha"]
+        elif response.status_code == 404:
+            sha = None
+        else:
+            raise Exception(f"Error checking file: {response.status_code} {response.text}")
+    
+        # --- Step 3: Prepare payload ---
+        payload = {
+            "message": commit_message,
+            "branch": branch,
+            "content": base64.b64encode(file_content.encode()).decode()
+        }
+        if sha:
+            payload["sha"] = sha
+    
+        # --- Step 4: Commit the file ---
+        put_response = requests.put(file_url, headers=headers, json=payload)
+        
+        if put_response.status_code in [200, 201]:
+            print("File committed successfully!")
+            return put_response.json()
+        else:
+            raise Exception(f"Error committing file: {put_response.status_code} {put_response.text}")
