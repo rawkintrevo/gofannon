@@ -1,0 +1,21 @@
+{
+  "name": "gofannon-webapp-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for the Gofannon Web Application.",
+  "scripts": {
+    "dev": "pnpm --filter webui dev",
+    "build": "pnpm --filter webui build",
+    "test": "pnpm run test:api && pnpm run test:e2e",
+    "test:api": "cd packages/api/user-service && python -m pytest",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.1",
+    "pnpm": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
