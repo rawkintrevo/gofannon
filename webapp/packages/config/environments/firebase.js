@@ -1,25 +1,32 @@
-export default firebaseConfig = {
+const firebaseConfig = {
   env: 'firebase',
   api: {
-    baseUrl: 'https://us-central1-your-project-id.cloudfunctions.net/api',
+    baseUrl: `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/api`,
   },
   auth: {
     provider: 'firebase',
     firebase: {
-      apiKey: 'YOUR_API_KEY',
-      authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-      // ... other firebase config
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
     },
     // Configurable social logins
-    enabledSocialProviders: ['google', 'facebook'],
+    enabledSocialProviders: ['google'],
   },
   storage: {
     provider: 'gcs', // Google Cloud Storage
     gcs: {
-      bucket: 'your-project-id.appspot.com',
+      bucket: `${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}`,
     },
   },
   theme: {
-    // Theme can be overridden here if needed
+    palette: {
+      primary: { main: '#FFA000' }, // Firebase-like orange
+      secondary: { main: '#039BE5' }, // Firebase-like blue
+    },
   },
 };
+export default firebaseConfig;
