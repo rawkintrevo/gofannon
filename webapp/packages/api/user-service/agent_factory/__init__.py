@@ -1,8 +1,16 @@
 from .remote_mcp_client import RemoteMCPClient
-from .prompts import how_to_use_tools, how_to_use_litellm, what_to_do_prompt_template, how_to_use_swagger_tools
+from .prompts import how_to_use_tools, \
+    how_to_use_litellm, \
+    what_to_do_prompt_template, \
+    how_to_use_swagger_tools, \
+    how_to_use_gofannon_agents
 from litellm import acompletion
-from models.agent import GenerateCodeRequest, GenerateCodeResponse
+from models.agent import GenerateCodeRequest, GenerateCodeResponse, Agent
 import json
+import asyncio
+
+from services.database_service import get_database_service
+from config import settings
 
 async def generate_agent_code(request: GenerateCodeRequest):
     """
@@ -34,6 +42,32 @@ async def generate_agent_code(request: GenerateCodeRequest):
         swagger_docs = "\n\n".join(swagger_docs_parts)
     tool_docs = "\n\n".join(filter(None, [swagger_docs, mcp_tool_docs]))
 
+    gofannon_agent_docs = ""
+    if request.gofannon_agents:
+        db = get_database_service(settings)
+        agent_docs_parts = ["## Gofannon Agents\n\nThe agent can call the following other Gofannon agents using the `gofannon_client`:\n"]
+        for agent_id in request.gofannon_agents:
+            try:
+                agent_data = db.get("agents", agent_id)
+                agent = Agent(**agent_data)
+                doc = f"""### Agent: `{agent.name}`
+**Description**: {agent.description}
+
+**Docstring**:
+```
+{agent.docstring or 'No docstring available.'}
+```
+
+**How to call**:
+You **MUST** use `await` to call this agent using the `gofannon_client`.
+
+result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}})
+"""
+                agent_docs_parts.append(doc)
+            except Exception as e:
+                print(f"Could not load agent {agent_id} for doc generation: {e}")
+        gofannon_agent_docs = "\n\n".join(agent_docs_parts)
+
     ## Generate docs for invokable models
     model_docs = ""
     if request.invokable_models:
@@ -54,32 +88,83 @@ async def generate_agent_code(request: GenerateCodeRequest):
     system_prompt_parts = []
     if tool_docs:
         system_prompt_parts.append(tool_docs)
+    if gofannon_agent_docs:
+        system_prompt_parts.append(gofannon_agent_docs)        
     if model_docs:
         system_prompt_parts.append(model_docs)
     if request.tools:
         system_prompt_parts.append(how_to_use_tools)
     if request.swagger_specs:
-        system_prompt_parts.append(how_to_use_swagger_tools)    
+        system_prompt_parts.append(how_to_use_swagger_tools) 
+    if request.gofannon_agents:
+        system_prompt_parts.append(how_to_use_gofannon_agents)  
+               
     if request.invokable_models:
         system_prompt_parts.append(how_to_use_litellm)
     system_prompt_parts.append(what_to_do)
     system_prompt = "\n\n".join(system_prompt_parts)  
-
+    
     model = request.composer_model_config.model
     provider = request.composer_model_config.provider
-    messages = [
+    
+    # ---- Code Generation Task ----
+    code_gen_messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": request.description},
     ]
     
     config = request.composer_model_config.parameters
-    response = await acompletion(
+    code_gen_task = acompletion(
                 model=f"{provider}/{model}",
-                messages=messages,
+                messages=code_gen_messages,
                 **config
             )
 
-    code_body = response.choices[0].message.content
+    # ---- Friendly Name and Docstring Generation Task ----
+    name_doc_prompt = f"""
+Based on the following description and schemas for a Python function, generate a suitable `friendly_name` for the function (in snake_case) and a Python docstring for it.
+The function signature in the docstring should use the `friendly_name` you generate, and reflect the input and output schemas.
+
+Description:
+{request.description}
+
+Input Schema:
+```json
+{input_schema_str}
+```
+
+Output Schema:
+```json
+{output_schema_str}
+```
+
+Return your response as a JSON object with two keys: "friendly_name" and "docstring".
+Do not include any other text or markdown formatting around the JSON object.
+"""
+    name_doc_messages = [
+        {"role": "system", "content": "You are a helpful assistant that generates Python function names and docstrings in JSON format."},
+        {"role": "user", "content": name_doc_prompt}
+    ]
+    
+    name_doc_config = request.composer_model_config.parameters.copy()
+    if provider == "openai":
+        name_doc_config['response_format'] = { "type": "json_object" }
+
+    name_doc_gen_task = acompletion(
+        model=f"{provider}/{model}",
+        messages=name_doc_messages,
+        **name_doc_config
+    )
+    
+    # ---- Run tasks concurrently ----
+    code_response, name_doc_response = await asyncio.gather(
+        code_gen_task,
+        name_doc_gen_task
+    )
+
+    # ---- Process Code Generation Response ----
+    code_body = code_response.choices[0].message.content
+ 
 
     # Clean up potential markdown formatting from the response
     if code_body.strip().startswith("```python"):
@@ -99,4 +184,23 @@ async def run(input_dict, tools):
     
     full_code = f"{header}\n{indented_body}"
 
-    return GenerateCodeResponse(code=full_code)
+    # ---- Process Name and Docstring Response ----
+    name_doc_content = name_doc_response.choices[0].message.content
+    try:
+        # Clean up potential markdown
+        if name_doc_content.strip().startswith("```json"):
+            name_doc_content = name_doc_content.strip()[len("```json"):].strip()
+        if name_doc_content.strip().endswith("```"):
+            name_doc_content = name_doc_content.strip()[:-len("```")].strip()
+            
+        name_doc_json = json.loads(name_doc_content)
+        friendly_name = name_doc_json.get("friendly_name", "unnamed_agent_function")
+        docstring = name_doc_json.get("docstring", "No docstring generated.")
+    except (json.JSONDecodeError, AttributeError) as e:
+        print(f"Error parsing name/docstring JSON: {e}")
+        print(f"LLM response for name/docstring was: {name_doc_content}")
+        friendly_name = "parsing_error_function"
+        docstring = f"Could not parse docstring from LLM response:\n{name_doc_content}"
+
+    return GenerateCodeResponse(code=full_code, friendly_name=friendly_name, docstring=docstring)
+

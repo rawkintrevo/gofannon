@@ -20,6 +20,13 @@ class GenerateCodeRequest(BaseModel):
     composer_model_config: ProviderConfig = Field(..., alias="modelConfig")
     invokable_models: Optional[List[ProviderConfig]] = Field(None, alias="invokableModels")
     swagger_specs: Optional[List[SwaggerSpec]] = Field(None, alias="swaggerSpecs")
+    gofannon_agents: Optional[List[str]] = Field(None, alias="gofannonAgents")
+    model_config = ConfigDict(populate_by_name=True)
+
+class GenerateCodeResponse(BaseModel):
+    code: str
+    friendly_name: str = Field(..., alias="friendlyName")
+    docstring: str
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -27,11 +34,14 @@ class CreateAgentRequest(BaseModel):
     name: str
     description: str
     code: str
+    docstring: Optional[str] = None
+    friendly_name: Optional[str] = Field(None, alias="friendlyName")
     tools: Dict[str, List[str]]
-    swagger_specs: Optional[List[SwaggerSpec]] = Field(None, alias="swaggerSpecs")
+    swagger_specs: Optional[List[SwaggerSpec]] = Field(default= [], alias="swaggerSpecs")
     input_schema: Optional[Dict[str, Any]] = Field(..., alias="inputSchema")
     output_schema: Optional[Dict[str, Any]] = Field(..., alias="outputSchema")
     invokable_models: Optional[List[ProviderConfig]] = Field(None, alias="invokableModels")
+    gofannon_agents: Optional[List[str]] = Field(default=[], alias="gofannonAgents")
 
     model_config = ConfigDict(
         populate_by_name=True,   
@@ -44,18 +54,14 @@ class Agent(CreateAgentRequest):
     created_at: datetime = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
     updated_at: datetime = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
 
-    model_config = ConfigDict(populate_by_name=True)
+    # model_config = ConfigDict(populate_by_name=True) # model_config is inherited from CreateAgentRequest
         
-
-        
-class GenerateCodeResponse(BaseModel):
-    code: str
 
 class RunCodeRequest(BaseModel):
     code: str
     input_dict: Dict[str, Any] = Field(..., alias="inputDict")
     tools: Dict[str, List[str]]
-
+    gofannon_agents: Optional[List[str]] = Field(default=[], alias="gofannonAgents")
     model_config = ConfigDict(populate_by_name=True)
 
 class RunCodeResponse(BaseModel):

@@ -46,12 +46,15 @@ class AgentService {
     }
   }
 
-  async runCodeInSandbox(code, inputDict, tools) {
+  async runCodeInSandbox(code, inputDict, tools, gofannonAgents) {
     
+    console.log("[AgentService] gofannonAgents:", gofannonAgents);
+    console.log("[AgentService] gofannonAgents IDs:", gofannonAgents.map(agent => agent.id));
     const requestBody = {
       code,
-      inputDict, // This will be correctly serialized as `inputDict`
+      inputDict,
       tools,
+      gofannonAgents: gofannonAgents.map(agent => agent.id),
     };
 
     try {
