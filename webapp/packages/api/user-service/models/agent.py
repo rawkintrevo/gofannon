@@ -51,8 +51,8 @@ class CreateAgentRequest(BaseModel):
 class Agent(CreateAgentRequest):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     rev: Optional[str] = Field(None, alias="_rev")
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # model_config = ConfigDict(populate_by_name=True) # model_config is inherited from CreateAgentRequest
         
@@ -68,4 +68,17 @@ class RunCodeResponse(BaseModel):
     result: Optional[Any] = None
     error: Optional[str] = None
 
-
+class Deployment(BaseModel):
+    id: str = Field(..., alias="_id") # This will be the friendly_name
+    agent_id: str = Field(..., alias="agentId")
+    rev: Optional[str] = Field(None, alias="_rev")
+    model_config = ConfigDict(populate_by_name=True)
+ 
+ 
+class DeployedApi(BaseModel):
+    friendly_name: str = Field(..., alias="friendlyName")
+    agent_id: str = Field(..., alias="agentId")
+    description: str
+    input_schema: Dict[str, Any] = Field(..., alias="inputSchema")
+    output_schema: Dict[str, Any] = Field(..., alias="outputSchema")
+    model_config = ConfigDict(populate_by_name=True)
