@@ -1,4 +1,6 @@
 
+from .gemini import models as gemini_models
+
 PROVIDER_CONFIG = {
     "openai": {
         "api_key_env_var": "OPENAI_API_KEY",
