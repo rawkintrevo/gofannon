@@ -7,6 +7,11 @@
 -->
 
 ## Complete ✅
+- [Chat with Agent](https://github.com/The-AI-Alliance/gofannon/pull/422)
+- [Add openai models and flesh out builtin tools](https://github.com/The-AI-Alliance/gofannon/pull/421)
+- [Add reasoning_effort](https://github.com/The-AI-Alliance/gofannon/pull/420)
+- [Calling Built-in tools](https://github.com/The-AI-Alliance/gofannon/pull/418)
+- [add gemini models](https://github.com/The-AI-Alliance/gofannon/pull/415)
 - [Canvas view code and change model](https://github.com/The-AI-Alliance/gofannon/pull/414)
 - [Fix width on home cards](https://github.com/The-AI-Alliance/gofannon/pull/413)
 - [Add swagger spec from URL and view spec](https://github.com/The-AI-Alliance/gofannon/pull/410)
@@ -38,29 +43,24 @@
 - [Create manifest.json](https://github.com/The-AI-Alliance/gofannon/pull/329)
 - [Closes #327 - GitHUb Actions Firing in Forked Repositories and Failing](https://github.com/The-AI-Alliance/gofannon/pull/328)
 - [Pdf plumber bug](https://github.com/The-AI-Alliance/gofannon/pull/324)
-- [vibe fix to adk bug](https://github.com/The-AI-Alliance/gofannon/pull/319)
 
 ## Under Construction 🚧
+- [Makefiles for setting webapp deployment target](https://github.com/The-AI-Alliance/gofannon/issues/389)
 - [WatsonX agent](https://github.com/The-AI-Alliance/gofannon/issues/352)
 
 ## In the Roadmap 📅
+- [Redo the PyPi package with Cli tooling for running the webapp locally](https://github.com/The-AI-Alliance/gofannon/issues/416)
 - [[webapp][schemas] Add 'password' type](https://github.com/The-AI-Alliance/gofannon/issues/411)
 - [Rework gofannon readme, all docs, to refer to new work](https://github.com/The-AI-Alliance/gofannon/issues/409)
 - [Add readme to tools deprecating it](https://github.com/The-AI-Alliance/gofannon/issues/408)
 - [[webapp][canvas][bug] when calling a function on a deployed app](https://github.com/The-AI-Alliance/gofannon/issues/407)
-- [[webapp][canvas] api calls dont work in iframe](https://github.com/The-AI-Alliance/gofannon/issues/403)
 - [Update DeepInfra Providers](https://github.com/The-AI-Alliance/gofannon/issues/394)
 - [Update WatsonX Providers](https://github.com/The-AI-Alliance/gofannon/issues/393)
-- [Update Gemeni Providers](https://github.com/The-AI-Alliance/gofannon/issues/392)
 - [Update Anthropic Providers](https://github.com/The-AI-Alliance/gofannon/issues/391)
-- [Update OpenAI Providers](https://github.com/The-AI-Alliance/gofannon/issues/390)
-- [Makefiles for setting webapp deployment target](https://github.com/The-AI-Alliance/gofannon/issues/389)
-- [Ability to Chat with Agent](https://github.com/The-AI-Alliance/gofannon/issues/388)
 - [Enable "Do I need more tools" button](https://github.com/The-AI-Alliance/gofannon/issues/387)
 - [Placeholder for where to lodge generated tool code](https://github.com/The-AI-Alliance/gofannon/issues/365)
 - [Accept req's docs as initial input](https://github.com/The-AI-Alliance/gofannon/issues/364)
 - [Templated webapp for use cases](https://github.com/The-AI-Alliance/gofannon/issues/363)
-- [Deploy agent to REST](https://github.com/The-AI-Alliance/gofannon/issues/362)
 - [Deploy agent to MCP](https://github.com/The-AI-Alliance/gofannon/issues/361)
 - [Deploy agent to A2A](https://github.com/The-AI-Alliance/gofannon/issues/360)
 - [Deploy agent](https://github.com/The-AI-Alliance/gofannon/issues/359)
