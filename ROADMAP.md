@@ -7,6 +7,7 @@
 -->
 
 ## Complete ✅
+- [OpenAI (Responses API) System Prompts](https://github.com/The-AI-Alliance/gofannon/pull/424)
 - [Chat with Agent](https://github.com/The-AI-Alliance/gofannon/pull/422)
 - [Add openai models and flesh out builtin tools](https://github.com/The-AI-Alliance/gofannon/pull/421)
 - [Add reasoning_effort](https://github.com/The-AI-Alliance/gofannon/pull/420)
@@ -42,7 +43,6 @@
 - [WebUI](https://github.com/The-AI-Alliance/gofannon/pull/335)
 - [Create manifest.json](https://github.com/The-AI-Alliance/gofannon/pull/329)
 - [Closes #327 - GitHUb Actions Firing in Forked Repositories and Failing](https://github.com/The-AI-Alliance/gofannon/pull/328)
-- [Pdf plumber bug](https://github.com/The-AI-Alliance/gofannon/pull/324)
 
 ## Under Construction 🚧
 - [Makefiles for setting webapp deployment target](https://github.com/The-AI-Alliance/gofannon/issues/389)
@@ -72,4 +72,3 @@
 - [Update provider list.](https://github.com/The-AI-Alliance/gofannon/issues/338)
 - [[Bug] Commit Files Doesn't Work](https://github.com/The-AI-Alliance/gofannon/issues/333)
 - [[Issue] github.get_repo_contents should have a maximum return size.](https://github.com/The-AI-Alliance/gofannon/issues/331)
-- [[Issue] There should be an extra 'all' to install all extras](https://github.com/The-AI-Alliance/gofannon/issues/323)
