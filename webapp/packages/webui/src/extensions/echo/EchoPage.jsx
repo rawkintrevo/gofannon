@@ -1,75 +1,52 @@
-// webapp/packages/webui/src/extensions/echo/EchoPage.jsx
 import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  CircularProgress,
-  Alert,
-  Container
-} from '@mui/material';
-import apiClient from '../../../services/apiClient';
+import { Box, Button, Stack, TextField, Typography } from '@mui/material';
+// import config from '../config';
 
 const EchoPage = () => {
-  const [text, setText] = useState('');
+  const [value, setValue] = useState('');
   const [echo, setEcho] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSend = async () => {
-    setLoading(true);
-    setError(null);
-    setEcho('');
-    try {
-      const response = await apiClient.post('/echo', { text });
-      setEcho(response.data.echo);
-    } catch (err) {
-      setError('Failed to get an echo. Is the backend extension running?');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const sendEcho = async () => {
+    // setIsSending(true);
+    // try {
+    //   const response = await fetch(`${config.api.baseUrl}/extensions/echo`, {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ message: value }),
+    //   });
+    //   const payload = await response.json();
+    //   setEcho(payload.echo ?? '');
+    // } finally {
+    //   setIsSending(false);
+    // }
   };
 
   return (
-    <Container maxWidth="sm">
-      <Paper sx={{ p: 3, mt: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Echo Chamber
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Echo
+      </Typography>
+      <Typography color="text.secondary" paragraph>
+        Type any message and the API will echo it back.
+      </Typography>
+      <Stack direction="row" spacing={2} alignItems="center">
+        <TextField
+          fullWidth
+          label="Message"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+        <Button variant="contained" onClick={sendEcho} disabled={isSending}>
+          {isSending ? 'Sending…' : 'Send'}
+        </Button>
+      </Stack>
+      {echo && (
+        <Typography sx={{ mt: 2 }}>
+          Echoed: <strong>{echo}</strong>
         </Typography>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          Type something in the box and click send. The backend will echo it back to you.
-        </Typography>
-        <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-          <TextField
-            fullWidth
-            label="Text to echo"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            variant="outlined"
-          />
-          <Button
-            variant="contained"
-            onClick={handleSend}
-            disabled={loading}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Send'}
-          </Button>
-        </Box>
-        {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-        {echo && (
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="h6">Echo:</Typography>
-            <Typography variant="body1" sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-              {echo}
-            </Typography>
-          </Box>
-        )}
-      </Paper>
-    </Container>
+      )}
+    </Box>
   );
 };
 

@@ -49,7 +49,7 @@ The new endpoint will be available at `POST /extensions/echo` and will be merged
 
 ## 2) Add the Echo page
 
-Create `webapp/packages/webui/src/pages/EchoPage.jsx`:
+Create `webapp/packages/webui/src/extensions/echo/EchoPage.jsx`:
 
 ```jsx
 import React, { useState } from 'react';
@@ -107,11 +107,37 @@ const EchoPage = () => {
 export default EchoPage;
 ```
 
+Also add the EchoCard.
+Create `webapp/packages/webui/src/extensions/echo/EchoCard.jsx`:
+```jsx
+// webapp/packages/webui/src/extensions/echo/EchoCard.jsx
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import ActionCard from '../../components/ActionCard';
+import CampaignIcon from '@mui/icons-material/Campaign';
+
+const EchoCard = () => {
+    const navigate = useNavigate();
+
+    return (
+        <ActionCard
+            icon={<CampaignIcon />}
+            title="Echo Chamber"
+            description="A simple page that echoes back what you type. A demonstration of the extension system."
+            buttonText="Go"
+            onClick={() => navigate('/echo')}
+        />
+    );
+};
+
+export default EchoCard;
+```
+
 ## 3) Extend the frontend routes
 
-Append the new route inside `webapp/packages/webui/src/extensions/echo.routes.js`:
+Append the new route inside `webapp/packages/webui/src/extensions/echo.routes.jsx`:
 
-```javascript
+```jsx
 import EchoPage from '../../pages/EchoPage';
 
 export const route = {
@@ -125,20 +151,34 @@ All routes defined here are merged with `src/config/routesConfig.jsx`, so the Ec
 
 ## 4) Register the Echo card
 
-Create `webapp/packages/webui/src/extensions/echo.card.js`:
+Create `webapp/packages/webui/src/extensions/echo.card.jsx`:
 
-```javascript
-import CampaignIcon from '@mui/icons-material/Campaign';
+```jsx
+import React from 'react';
+import { Button, Card, CardActions, CardContent, Typography } from '@mui/material';
+import { Link } from 'react-router-dom';
 
-export const card = {
-    id: 'echo',
-    title: 'Echo',
-    description: 'Send text to the Echo API and see it mirrored back.',
-    buttonText: 'Open Echo',
-    icon: <CampaignIcon />,
-    defaultOrder: 7,
-    onAction: ({ navigate }) => navigate('/echo'),
-  };
+const EchoCard = () => {
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h5" component="div">
+          Echo Extension
+        </Typography>
+        <Typography sx={{ mt: 1.5 }} color="text.secondary">
+          An example of a custom card that links to a new page and API.
+        </Typography>
+      </CardContent>
+      <CardActions>
+        <Button component={Link} to="/echo" size="small">
+          Try It
+        </Button>
+      </CardActions>
+    </Card>
+  );
+};
+
+export default EchoCard;
 ```
 
 (Optional) If you want to control the card’s order or grouping, add an entry to `CARD_CONFIG_OVERRIDES` (for example via `.env` or `window.__CARD_CONFIG_OVERRIDES__`).
