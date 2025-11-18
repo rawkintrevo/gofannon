@@ -54,7 +54,7 @@ Create `webapp/packages/webui/src/extensions/echo/EchoPage.jsx`:
 ```jsx
 import React, { useState } from 'react';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
-import config from '../config';
+import config from '../../config';
 
 const EchoPage = () => {
   const [value, setValue] = useState('');
@@ -138,13 +138,14 @@ export default EchoCard;
 Append the new route inside `webapp/packages/webui/src/extensions/echo.routes.jsx`:
 
 ```jsx
-import EchoPage from '../../pages/EchoPage';
+import React from 'react';
+import EchoPage from './echo/EchoPage';
 
 export const route = {
-    path: '/echo',
-    element: <EchoPage />,
-    // Inherits PrivateRoute + Layout by default
-  }
+  path: '/echo',
+  element: <EchoPage />,
+  // Inherits PrivateRoute + Layout by default
+};
 ```
 
 All routes defined here are merged with `src/config/routesConfig.jsx`, so the Echo page sits alongside the built-in screens.
@@ -154,31 +155,17 @@ All routes defined here are merged with `src/config/routesConfig.jsx`, so the Ec
 Create `webapp/packages/webui/src/extensions/echo.card.jsx`:
 
 ```jsx
-import React from 'react';
-import { Button, Card, CardActions, CardContent, Typography } from '@mui/material';
-import { Link } from 'react-router-dom';
+import CampaignIcon from '@mui/icons-material/Campaign';
 
-const EchoCard = () => {
-  return (
-    <Card>
-      <CardContent>
-        <Typography variant="h5" component="div">
-          Echo Extension
-        </Typography>
-        <Typography sx={{ mt: 1.5 }} color="text.secondary">
-          An example of a custom card that links to a new page and API.
-        </Typography>
-      </CardContent>
-      <CardActions>
-        <Button component={Link} to="/echo" size="small">
-          Try It
-        </Button>
-      </CardActions>
-    </Card>
-  );
+export const card = {
+  id: 'echo',
+  title: 'Echo Chamber',
+  description: 'An example of a custom card that links to a new page and API.',
+  buttonText: 'Try It',
+  icon: <CampaignIcon />,
+  iconColor: 'primary.main',
+  onAction: ({ navigate }) => navigate('/echo'),
 };
-
-export default EchoCard;
 ```
 
 (Optional) If you want to control the card’s order or grouping, add an entry to `CARD_CONFIG_OVERRIDES` (for example via `.env` or `window.__CARD_CONFIG_OVERRIDES__`).
