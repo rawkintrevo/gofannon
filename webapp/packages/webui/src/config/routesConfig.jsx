@@ -20,7 +20,7 @@ import CanvasScreen from '../pages/DemoCreationFlow/CanvasScreen';
 import SaveDemoScreen from '../pages/DemoCreationFlow/SaveDemoScreen';
 import { AgentCreationFlowProvider } from '../pages/AgentCreationFlow/AgentCreationFlowContext';
 import { DemoCreationFlowProvider } from '../pages/DemoCreationFlow/DemoCreationFlowContext';
-import extendRoutes from '../extensions/routes/routeExtensions';
+// import extendRoutes from '../extensions/routes/routeExtensions';
 
 export const defaultRoutes = [
   {

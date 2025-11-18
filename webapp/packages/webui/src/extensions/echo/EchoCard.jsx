@@ -1,7 +1,7 @@
 // webapp/packages/webui/src/extensions/echo/EchoCard.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import ActionCard from '../../../components/ActionCard';
+import ActionCard from '../../components/ActionCard';
 import CampaignIcon from '@mui/icons-material/Campaign';
 
 const EchoCard = () => {
