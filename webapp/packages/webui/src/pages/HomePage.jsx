@@ -3,16 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Grid } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import ActionCard from '../components/ActionCard';
-import { ensureCardRegistryInitialized, listCards } from '../extensions/cards/cardRegistry';
-import loadCardsConfig from '../extensions/cards/config/configLoader';
+import { cards as extensionCards } from '../extensions';
 
 const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  ensureCardRegistryInitialized();
-
-  const cards = useMemo(() => listCards(loadCardsConfig()), []);
+  const cards = useMemo(() => extensionCards, []);
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
