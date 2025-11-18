@@ -109,33 +109,28 @@ export default EchoPage;
 
 ## 3) Extend the frontend routes
 
-Append the new route inside `webapp/packages/webui/src/extensions/routes/routeExtensions.js`:
+Append the new route inside `webapp/packages/webui/src/extensions/echo.routes.js`:
 
 ```javascript
 import EchoPage from '../../pages/EchoPage';
 
-export const extendRoutes = (defaultRoutes = []) => [
-  ...defaultRoutes,
-  {
+export const route = {
     path: '/echo',
     element: <EchoPage />,
     // Inherits PrivateRoute + Layout by default
-  },
-];
+  }
 ```
 
 All routes defined here are merged with `src/config/routesConfig.jsx`, so the Echo page sits alongside the built-in screens.
 
 ## 4) Register the Echo card
 
-Create `webapp/packages/webui/src/extensions/cards/registerEchoCard.js`:
+Create `webapp/packages/webui/src/extensions/echo.card.js`:
 
 ```javascript
 import CampaignIcon from '@mui/icons-material/Campaign';
-import { registerExternalCardRegistrar } from './cardRegistry';
 
-registerExternalCardRegistrar(({ registerCard }) =>
-  registerCard({
+export const card = {
     id: 'echo',
     title: 'Echo',
     description: 'Send text to the Echo API and see it mirrored back.',
@@ -143,14 +138,7 @@ registerExternalCardRegistrar(({ registerCard }) =>
     icon: <CampaignIcon />,
     defaultOrder: 7,
     onAction: ({ navigate }) => navigate('/echo'),
-  }),
-);
-```
-
-Import the registrar once so it runs during startup by editing `webapp/packages/webui/src/main.jsx`:
-
-```javascript
-import './extensions/cards/registerEchoCard';
+  };
 ```
 
 (Optional) If you want to control the card’s order or grouping, add an entry to `CARD_CONFIG_OVERRIDES` (for example via `.env` or `window.__CARD_CONFIG_OVERRIDES__`).

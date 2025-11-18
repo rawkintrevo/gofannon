@@ -105,6 +105,10 @@ export const defaultRoutes = [
   },
 ];
 
-export const loadRoutesConfig = () => extendRoutes(defaultRoutes);
+import { routes as extensionRoutes } from '../extensions';
+
+export const loadRoutesConfig = () => {
+  return [...defaultRoutes, ...extensionRoutes];
+};
 
 export default loadRoutesConfig;
