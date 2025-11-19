@@ -30,6 +30,20 @@ This monorepo contains the complete scaffolding for the Gofannon web application
 
 ### Running Locally
 
+#### pnpm scripts (without Docker)
+
+From the `webapp/` directory you can run both the Vite web UI and the FastAPI service via pnpm:
+
+```bash
+pnpm dev    # runs the Vite dev server and uvicorn together via concurrently
+pnpm build  # builds the SPA into packages/webui/dist
+pnpm start  # serves the API and the built SPA from FastAPI
+```
+
+`pnpm start` expects that `pnpm build` has already produced `packages/webui/dist`. During local development you can also control whether the FastAPI service serves the built UI by toggling the `SERVE_WEBUI_FROM_API` environment variable (defaults to `true`). Set it to `false` (or `0`, `no`, `off`) if you want the API to run without mounting the static assets.
+
+#### Docker Compose
+
 1.  Start all services using Docker Compose:
     ```bash
     cd infra/docker

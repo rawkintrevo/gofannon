@@ -4,14 +4,18 @@
   "private": true,
   "description": "Monorepo for the Gofannon Web Application.",
   "scripts": {
-    "dev": "pnpm --filter webui dev",
+    "dev:web": "pnpm --filter webui dev",
+    "dev:api": "cd packages/api/user-service && uvicorn main:app --reload --port 8000",
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:api\"",
     "build": "pnpm --filter webui build",
+    "start": "cd packages/api/user-service && uvicorn main:app --host 0.0.0.0 --port 8000",
     "test": "pnpm run test:api && pnpm run test:e2e",
     "test:api": "cd packages/api/user-service && python -m pytest",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.1",
+    "concurrently": "^9.1.2",
     "pnpm": "^8.0.0"
   },
   "engines": {

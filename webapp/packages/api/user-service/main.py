@@ -1,7 +1,8 @@
 # webapp/packages/api/user-service/main.py
 from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, BackgroundTasks, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from typing import Annotated, Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -49,6 +50,34 @@ router = APIRouter()
 
 # Add observability middleware
 app.add_middleware(ObservabilityMiddleware)
+
+
+def _str_to_bool(value: str) -> bool:
+    return value.strip().lower() not in {"0", "false", "off", "no"}
+
+
+BASE_DIR = Path(__file__).resolve().parent
+WEB_DIST = BASE_DIR.parent.parent / "webui" / "dist"
+SERVE_WEBUI_FROM_API = _str_to_bool(os.getenv("SERVE_WEBUI_FROM_API", "true"))
+
+if SERVE_WEBUI_FROM_API:
+    if WEB_DIST.exists():
+        assets_dir = WEB_DIST / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+            app.mount("/static", StaticFiles(directory=assets_dir), name="static")
+
+        @app.get("/", include_in_schema=False)
+        async def index():
+            return FileResponse(WEB_DIST / "index.html")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            if full_path.startswith("api/"):
+                raise HTTPException(status_code=404, detail="Not found")
+            return FileResponse(WEB_DIST / "index.html")
+    else:
+        print(f"SERVE_WEBUI_FROM_API is enabled but no build was found at {WEB_DIST}")
 
 @app.on_event("startup")
 async def startup_event():
