@@ -69,6 +69,10 @@ For a detailed overview of planned features and their current status, please ref
 
 Documentation can be found [here](https://github.com/The-AI-Alliance/gofannon/tree/main/docs). Each tool comes with its own documentation, which can be found in the docs/ directory. The documentation provides detailed information on how to use each tool, including required parameters and example usage.
 
+## 🕸️ Web Application Development 🕸️
+
+The `webapp/` subdirectory contains the React web UI and FastAPI services that power the hosted experience. Refer to [`webapp/README.md`](webapp/README.md) for pnpm-driven workflows (`pnpm dev`, `pnpm build`, `pnpm start`) that run both the SPA and API locally and describe how the API can serve the built frontend via the `SERVE_WEBUI_FROM_API` environment variable.
+
 ## ☎️☎️ Contact Us ☎️☎️
 
 [Contact Information](https://the-ai-alliance.github.io/gofannon/community/contact.html)
