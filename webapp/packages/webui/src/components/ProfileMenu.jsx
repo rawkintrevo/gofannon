@@ -4,6 +4,7 @@ import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ADMIN_PANEL_ENABLED } from '../config/adminConfig';
 
 const ProfileMenu = () => {
   const { logout } = useAuth();
@@ -58,6 +59,7 @@ const ProfileMenu = () => {
         <MenuItem onClick={() => handleNavigate('/profile/basic')}>Basic Info</MenuItem>
         <MenuItem onClick={() => handleNavigate('/profile/usage')}>Usage</MenuItem>
         <MenuItem onClick={() => handleNavigate('/profile/billing')}>Billing</MenuItem>
+        {ADMIN_PANEL_ENABLED && <MenuItem onClick={() => handleNavigate('/admin')}>Admin</MenuItem>}
         <Divider />
         <MenuItem onClick={handleLogout}>Logout</MenuItem>
       </Menu>

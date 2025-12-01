@@ -6,6 +6,10 @@ load_dotenv()
 class Settings:
     APP_ENV: str = os.getenv("APP_ENV", "local")
     STORAGE_PROVIDER: str = os.getenv("STORAGE_PROVIDER", "local")
+
+    # Admin Panel Settings
+    ADMIN_PANEL_ENABLED: bool = os.getenv("ADMIN_PANEL_ENABLED", "false").lower() == "true"
+    ADMIN_PANEL_PASSWORD: str = os.getenv("ADMIN_PANEL_PASSWORD", "password")
     
     # S3/MinIO Settings
     S3_ENDPOINT_URL: str | None = os.getenv("S3_ENDPOINT_URL")
