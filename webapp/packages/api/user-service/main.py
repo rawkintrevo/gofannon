@@ -1,5 +1,5 @@
 # webapp/packages/api/user-service/main.py
-from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, BackgroundTasks, Request, Header
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated, Optional, Dict, Any, List
@@ -41,6 +41,7 @@ from models.demo import (
     GenerateDemoCodeRequest, GenerateDemoCodeResponse,
     CreateDemoAppRequest, DemoApp
 )
+from models.user import UpdateUserBudgetRequest, UserBudget
 
 from agent_factory.remote_mcp_client import RemoteMCPClient
 
@@ -133,6 +134,20 @@ def get_db() -> DatabaseService:
 def get_logger() -> ObservabilityService:
     """Dependency to get the observability service instance."""
     return get_observability_service()
+
+
+def require_admin_access(admin_password: str = Header(default=None, alias="x-admin-password", convert_underscores=False)):
+    """Simple admin guard using an environment-driven password."""
+    if not settings.ADMIN_PANEL_ENABLED:
+        raise HTTPException(status_code=404, detail="Admin panel is disabled")
+
+    if not admin_password:
+        raise HTTPException(status_code=401, detail="Admin password is required")
+
+    if admin_password != settings.ADMIN_PANEL_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid admin password")
+
+    return admin_password
 
 # Background task for LLM processing
 async def process_chat(ticket_id: str, request: ChatRequest, user: dict, req: Request):
@@ -734,6 +749,49 @@ async def run_deployed_agent(friendly_name: str, request: Request, db: DatabaseS
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error executing agent: {str(e)}")
+
+# --- Admin Endpoints ---
+
+def _build_user_budget(user_data: Dict[str, Any]) -> UserBudget:
+    """Normalize user budget data and stamp timestamps."""
+    user_budget = UserBudget(**user_data)
+    user_budget.updated_at = datetime.utcnow()
+    if not user_budget.created_at:
+        user_budget.created_at = datetime.utcnow()
+    return user_budget
+
+
+@router.get("/admin/users", response_model=List[UserBudget])
+async def list_users_admin(
+    db: DatabaseService = Depends(get_db),
+    _: str = Depends(require_admin_access)
+):
+    users = db.list_all("users")
+    return [UserBudget(**user) for user in users]
+
+
+@router.put("/admin/users/{user_id}", response_model=UserBudget)
+async def update_user_budget(
+    user_id: str,
+    request: UpdateUserBudgetRequest,
+    db: DatabaseService = Depends(get_db),
+    _: str = Depends(require_admin_access)
+):
+    try:
+        existing_user = db.get("users", user_id)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            existing_user = {"_id": user_id}
+        else:
+            raise
+
+    updates = request.model_dump(by_alias=True, exclude_none=True)
+    merged_user = {**existing_user, **updates, "_id": user_id}
+    normalized_user = _build_user_budget(merged_user)
+
+    saved_doc = db.save("users", user_id, normalized_user.model_dump(by_alias=True, mode="json"))
+    normalized_user.rev = saved_doc.get("rev")
+    return normalized_user
 
 # --- Demo App Endpoints ---
 
