@@ -2,6 +2,7 @@ import abc
 from typing import Any, Dict, List
 from fastapi import HTTPException
 import couchdb
+from firebase_admin import firestore
 
 class DatabaseService(abc.ABC):
     """Abstract base class for a generic database service."""
