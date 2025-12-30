@@ -1,6 +1,8 @@
 # Stage 1: Build the React application
 FROM node:22-alpine AS builder
 WORKDIR /app
+ARG VITE_APP_ENV=local
+ENV VITE_APP_ENV=$VITE_APP_ENV
 COPY ./packages/webui/package.json ./packages/config/package.json ./package.json ./pnpm-workspace.yaml ./
 COPY ./pnpm-lock.yaml ./
 RUN npm install -g pnpm && pnpm install

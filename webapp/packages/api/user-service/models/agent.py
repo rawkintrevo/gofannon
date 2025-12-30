@@ -40,18 +40,39 @@ class CreateAgentRequest(BaseModel):
     code: str
     docstring: Optional[str] = None
     friendly_name: Optional[str] = Field(None, alias="friendlyName")
-    tools: Dict[str, List[str]]
+    tools: Dict[str, List[str]] = Field(default_factory=dict)
     swagger_specs: Optional[List[SwaggerSpec]] = Field(default_factory=list, alias="swaggerSpecs")
-    input_schema: Optional[Dict[str, Any]] = Field(..., alias="inputSchema")
-    output_schema: Optional[Dict[str, Any]] = Field(..., alias="outputSchema")
+    input_schema: Optional[Dict[str, Any]] = Field(None, alias="inputSchema")
+    output_schema: Optional[Dict[str, Any]] = Field(None, alias="outputSchema")
     invokable_models: Optional[List[ProviderConfig]] = Field(None, alias="invokableModels")
     gofannon_agents: Optional[List[str]] = Field(default_factory=list, alias="gofannonAgents")
     composer_thoughts: Optional[Any] = Field(None, alias="composerThoughts")
 
-
     model_config = ConfigDict(
         populate_by_name=True,   
-        alias_generator=to_camel 
+        alias_generator=to_camel,
+        extra="ignore",
+        serialize_by_alias=True
+    )
+
+class UpdateAgentRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    code: Optional[str] = None
+    docstring: Optional[str] = None
+    friendly_name: Optional[str] = Field(None, alias="friendlyName")
+    tools: Optional[Dict[str, List[str]]] = Field(default=None)
+    swagger_specs: Optional[List[SwaggerSpec]] = Field(default=None, alias="swaggerSpecs")
+    input_schema: Optional[Dict[str, Any]] = Field(None, alias="inputSchema")
+    output_schema: Optional[Dict[str, Any]] = Field(None, alias="outputSchema")
+    invokable_models: Optional[List[ProviderConfig]] = Field(None, alias="invokableModels")
+    gofannon_agents: Optional[List[str]] = Field(default=None, alias="gofannonAgents")
+    composer_thoughts: Optional[Any] = Field(None, alias="composerThoughts")
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=to_camel,
+        extra="ignore",
+        serialize_by_alias=True
     )
 
 class Agent(CreateAgentRequest):

@@ -33,6 +33,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import Divider from '@mui/material/Divider';
 
 import { useAgentFlow } from './AgentCreationFlow/AgentCreationFlowContext';
@@ -155,7 +156,13 @@ const ViewAgent = () => {
   };
 
   const handleRunInSandbox = () => {
-    updateContextAndNavigate('/create-agent/sandbox');
+    if (agentId) {
+      // For saved agents, navigate to agent-specific sandbox route
+      updateContextAndNavigate(`/agent/${agentId}/sandbox`);
+    } else {
+      // For creation flow, navigate to creation sandbox
+      updateContextAndNavigate('/create-agent/sandbox');
+    }
   };
 
   const handleDeploy = () => {
@@ -168,6 +175,10 @@ const ViewAgent = () => {
     }
   };
 
+  const handleEditTools = () => {
+    updateContextAndNavigate('/create-agent/tools');
+  };
+
   const handleUpdateAgent = async () => {
     if (!agentId) return; // Should not happen if button is only for edit mode
     setError(null);
@@ -178,6 +189,15 @@ const ViewAgent = () => {
         name: agent.name,
         description: agent.description,
         code: agent.code,
+        docstring: agent.docstring,
+        friendlyName: agent.friendlyName,
+        tools: agent.tools || {},
+        swaggerSpecs: agent.swaggerSpecs || [],
+        inputSchema: agent.inputSchema,
+        outputSchema: agent.outputSchema,
+        invokableModels: agent.invokableModels,
+        gofannonAgents: (agent.gofannonAgents || []).map(ga => typeof ga === 'string' ? ga : ga.id),
+        composerThoughts: agent.composerThoughts,
       });
       setSaveSuccess(true);
     } catch (err) {
@@ -293,6 +313,17 @@ const ViewAgent = () => {
                     ))}
                 </List>
                 ) : (<Typography variant="body2" color="text.secondary">No Gofannon agents configured.</Typography>)}
+                
+                {!isCreationFlow && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={handleEditTools}
+                    sx={{ mt: 2 }}
+                  >
+                    Edit Tools & Specs
+                  </Button>
+                )}
             </AccordionDetails>
         </Accordion>
 
@@ -347,7 +378,7 @@ const ViewAgent = () => {
                 <Typography>Agent Code</Typography>
             </AccordionSummary>
             <AccordionDetails>
-                <CodeEditor code={agent.code} onCodeChange={(newCode) => handleFieldChange('code', newCode)} isReadOnly={!isCreationFlow}/>
+                <CodeEditor code={agent.code} onCodeChange={(newCode) => handleFieldChange('code', newCode)} isReadOnly={false}/>
             </AccordionDetails>
         </Accordion>
 
@@ -417,6 +448,16 @@ const ViewAgent = () => {
             >
                 Deploy Agent
             </Button>
+            {isCreationFlow && (
+                <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<SaveIcon />}
+                    onClick={() => navigate('/create-agent/save')}
+                >
+                    Save Agent
+                </Button>
+            )}
             {!isCreationFlow && (
                 <Button
                     variant="contained"

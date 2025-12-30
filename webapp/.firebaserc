@@ -1,7 +1,8 @@
 {
   "projects": {
     "default": "gofannon-ramen",
-    "staging": "gofannon-ramen"
+    "staging": "gofannon-ramen",
+    "testing": "ramen-22d01"
   },
   "targets": {},
   "etags": {}

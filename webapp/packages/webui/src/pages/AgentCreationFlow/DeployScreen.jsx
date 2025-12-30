@@ -1,5 +1,5 @@
 // webapp/packages/webui/src/pages/AgentCreationFlow/DeployScreen.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import PublishIcon from '@mui/icons-material/Publish';
 import SaveIcon from '@mui/icons-material/Save';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAgentFlow } from './AgentCreationFlowContext';
 import agentService from '../../services/agentService';
 
@@ -27,10 +28,28 @@ const DeployScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [agentName, setAgentName] = useState('');
 
   const navigate = useNavigate();
   const { agentId } = useParams(); // Get agentId from URL if viewing existing agent
   const agentFlowContext = useAgentFlow();
+
+  // Fetch agent name for display when viewing existing agent
+  useEffect(() => {
+    if (agentId && !agentFlowContext.friendlyName) {
+      const fetchAgentName = async () => {
+        try {
+          const agent = await agentService.getAgent(agentId);
+          setAgentName(agent.name || agent.friendlyName || 'Agent');
+        } catch (err) {
+          console.error('Failed to fetch agent name:', err);
+        }
+      };
+      fetchAgentName();
+    } else if (agentFlowContext.friendlyName) {
+      setAgentName(agentFlowContext.friendlyName);
+    }
+  }, [agentId, agentFlowContext.friendlyName]);
 
   const handleDeploy = async () => {
     setIsLoading(true);
@@ -73,13 +92,27 @@ const DeployScreen = () => {
   };
 
   const handleSave = () => {
-    navigate('/create-agent/save');
+    if (agentId) {
+      // For existing agents, go back to view
+      navigate(`/agent/${agentId}`);
+    } else {
+      // For new agents, go to save screen
+      navigate('/create-agent/save');
+    }
+  };
+
+  const handleBack = () => {
+    if (agentId) {
+      navigate(`/agent/${agentId}`);
+    } else {
+      navigate('/create-agent/code');
+    }
   };
 
   return (
     <Paper sx={{ p: 3, maxWidth: 600, margin: 'auto', mt: 4 }}>
       <Typography variant="h5" component="h2" gutterBottom>
-        Deploy Your Agent
+        {agentId ? `Deploy: ${agentName}` : 'Deploy Your Agent'}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Choose how your agent will interact and where it will be hosted. You can save the agent configuration now and deploy it later.
@@ -132,12 +165,21 @@ const DeployScreen = () => {
       <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
         <Button
           variant="outlined"
-          color="secondary"
-          startIcon={<SaveIcon />}
-          onClick={handleSave}
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
         >
-          Save Agent
+          Back
         </Button>
+        {!agentId && (
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<SaveIcon />}
+            onClick={handleSave}
+          >
+            Save Agent
+          </Button>
+        )}
         <Button
           variant="contained"
           color="primary"

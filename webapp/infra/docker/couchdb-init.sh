@@ -3,7 +3,7 @@
 
 # Wait for CouchDB to be available
 echo "Waiting for CouchDB to start..."
-until curl -s http://couchdb:5984/_utils/ > /dev/null; do
+until curl -s http://couchdb:5984/ > /dev/null; do
   echo "CouchDB not yet available, waiting..."
   sleep 5
 done

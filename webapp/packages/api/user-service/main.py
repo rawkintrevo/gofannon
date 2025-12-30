@@ -12,6 +12,7 @@ import os
 import traceback
 from pathlib import Path
 from contextlib import asynccontextmanager
+from models.agent import UpdateAgentRequest
 
 from config import settings
 from config.routes_config import RouterConfig, resolve_router_configs
@@ -425,6 +426,50 @@ async def delete_agent(
     except HTTPException as e:
         raise e
 
+@router.put("/agents/{agent_id}", response_model=Agent)
+async def update_agent(
+    agent_id: str,
+    request: UpdateAgentRequest,
+    req: Request,
+    db: DatabaseService = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    logger: ObservabilityService = Depends(get_logger)
+):
+    """Updates an existing agent configuration."""
+    # Get existing agent to preserve _rev and created_at for CouchDB
+    existing_doc = db.get("agents", agent_id)
+    
+    # Only get fields that were actually sent (exclude_unset=True)
+    update_data = request.model_dump(by_alias=True, exclude_unset=True)
+    
+    # Merge: existing data + new data (new data wins)
+    merged_data = {**existing_doc, **update_data}
+    
+    # Remove CouchDB metadata before creating Agent model
+    merged_data.pop("_rev", None)
+    merged_data.pop("_id", None)
+    
+    updated_agent = Agent(_id=agent_id, **merged_data)
+    
+    # Preserve original created_at, update updated_at
+    if "createdAt" in existing_doc:
+        updated_agent.created_at = existing_doc["createdAt"]
+    elif "created_at" in existing_doc:
+        updated_agent.created_at = existing_doc["created_at"]
+    updated_agent.updated_at = datetime.utcnow()
+    
+    # Save with the existing _rev to handle CouchDB conflicts
+    saved_doc_data = updated_agent.model_dump(by_alias=True, mode="json")
+    saved_doc_data["_rev"] = existing_doc.get("_rev")
+    
+    saved_doc = db.save("agents", agent_id, saved_doc_data)
+    updated_agent.rev = saved_doc.get("rev")
+    
+    logger.log(
+        "INFO", "user_action", f"Agent '{updated_agent.name}' updated.",
+        metadata={"agent_id": agent_id, "agent_name": updated_agent.name, "request": get_sanitized_request_data(req)}
+    )
+    return updated_agent
 
 @router.post("/mcp/tools")
 async def list_mcp_tools(

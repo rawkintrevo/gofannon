@@ -85,6 +85,14 @@ export const defaultRoutes = [
     ),
   },
   {
+    path: '/agent/:agentId/sandbox',
+    element: (
+      <AgentCreationFlowProvider>
+        <SandboxScreen />
+      </AgentCreationFlowProvider>
+    ),
+  },
+  {
     path: '/create-agent/*',
     element: (
       <AgentCreationFlowProvider>

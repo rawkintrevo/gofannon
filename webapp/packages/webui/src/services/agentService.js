@@ -169,11 +169,13 @@ class AgentService {
 
   async updateAgent(agentId, agentData) {
     try {
+      const authHeaders = await this._getAuthHeaders();
       const response = await fetch(`${API_BASE_URL}/agents/${agentId}`, {
         method: 'PUT', // Or PATCH if the backend supports partial updates
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          ...authHeaders,
         },
         body: JSON.stringify(agentData),
       });

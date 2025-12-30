@@ -73,7 +73,14 @@ async def call_llm(
     if user_service and user_id:
         user_service.require_allowance(user_id, basic_info=user_basic_info)
 
-    if api_style == "responses":
+    # Only use aresponses API when we actually need its features (tools or reasoning)
+    # Otherwise use standard acompletion which is more reliable
+    use_responses_api = (
+        api_style == "responses" and 
+        (tools or reasoning_effort != 'disable')
+    )
+
+    if use_responses_api:
         # Use aresponses and aget_responses for OpenAI's special tools like built-in web search
         kwargs.pop('messages', None) # aresponses uses 'input' not 'messages'
         if reasoning_effort != 'disable':
@@ -89,6 +96,9 @@ async def call_llm(
 
             # Note: The 'input' for aresponses is the last user message. Conversation history is not directly supported.
             input_text = next((msg["content"] for msg in reversed(other_messages) if msg["role"] == "user"), "")
+            
+            if not input_text:
+                raise ValueError("No user message content found for Responses API call")
             
             response_obj = await litellm.aresponses(input=input_text, **kwargs)
             
@@ -159,7 +169,7 @@ async def call_llm(
     if user_service and user_id:
         response_cost = None
         try:
-            response_cost = _extract_response_cost(final_response if api_style == "responses" else response)
+            response_cost = _extract_response_cost(final_response if use_responses_api else response)
         except Exception:
             response_cost = None
         if response_cost is not None:
