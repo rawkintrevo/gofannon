@@ -1,4 +1,4 @@
- # webapp/packages/api/user-service/models/agent.py
+# webapp/packages/api/user-service/models/agent.py
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 from pydantic.alias_generators import to_camel
@@ -47,6 +47,7 @@ class CreateAgentRequest(BaseModel):
     invokable_models: Optional[List[ProviderConfig]] = Field(None, alias="invokableModels")
     gofannon_agents: Optional[List[str]] = Field(default_factory=list, alias="gofannonAgents")
     composer_thoughts: Optional[Any] = Field(None, alias="composerThoughts")
+    composer_model_config: Optional[ProviderConfig] = Field(None, alias="composerModelConfig")
 
     model_config = ConfigDict(
         populate_by_name=True,   
@@ -68,6 +69,7 @@ class UpdateAgentRequest(BaseModel):
     invokable_models: Optional[List[ProviderConfig]] = Field(None, alias="invokableModels")
     gofannon_agents: Optional[List[str]] = Field(default=None, alias="gofannonAgents")
     composer_thoughts: Optional[Any] = Field(None, alias="composerThoughts")
+    composer_model_config: Optional[ProviderConfig] = Field(None, alias="composerModelConfig")
     model_config = ConfigDict(
         populate_by_name=True,
         alias_generator=to_camel,
@@ -109,4 +111,3 @@ class DeployedApi(BaseModel):
     input_schema: Dict[str, Any] = Field(..., alias="inputSchema")
     output_schema: Dict[str, Any] = Field(..., alias="outputSchema")
     model_config = ConfigDict(populate_by_name=True)
-    

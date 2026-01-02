@@ -22,6 +22,7 @@ export const AgentCreationFlowProvider = ({ children }) => {
     const [docstring, setDocstring] = useState('');
     const [invokableModels, setInvokableModels] = useState([]);
     const [gofannonAgents, setGofannonAgents] = useState([]); // {id, name}
+    const [composerModelConfig, setComposerModelConfig] = useState(null); // { provider, model, parameters }
 
     // State for the composer model's built-in tool
     const [composerBuiltInTool, setComposerBuiltInTool] = useState('');    
@@ -48,7 +49,9 @@ export const AgentCreationFlowProvider = ({ children }) => {
         gofannonAgents,
         setGofannonAgents,
         composerBuiltInTool,
-        setComposerBuiltInTool,       
+        setComposerBuiltInTool,
+        composerModelConfig,
+        setComposerModelConfig,
     };
 
     return (

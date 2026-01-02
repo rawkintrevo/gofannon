@@ -40,7 +40,8 @@ const SchemasScreen = () => {
     setInvokableModels,
     gofannonAgents,
     composerBuiltInTool, 
-    setComposerBuiltInTool
+    setComposerBuiltInTool,
+    setComposerModelConfig
   } = useAgentFlow();
   const navigate = useNavigate();
 
@@ -139,6 +140,12 @@ const SchemasScreen = () => {
       setGeneratedCode(response.code);
       setFriendlyName(response.friendlyName);
       setDocstring(response.docstring);
+      // Save the composer model config so it can be stored with the agent
+      setComposerModelConfig({
+        provider: selectedProvider,
+        model: selectedModel,
+        parameters: currentModelParams,
+      });
       navigate('/create-agent/code');
     } catch (err) {
       setBuildError(err.message || 'An unexpected error occurred while building the agent.');

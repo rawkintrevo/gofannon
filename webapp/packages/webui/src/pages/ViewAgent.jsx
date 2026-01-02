@@ -22,7 +22,11 @@ import {
   DialogContent,
   DialogContentText,
   IconButton,
-  DialogTitle,  
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -34,13 +38,16 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import Divider from '@mui/material/Divider';
 
 import { useAgentFlow } from './AgentCreationFlow/AgentCreationFlowContext';
 import agentService from '../services/agentService';
+import chatService from '../services/chatService';
 import CodeEditor from '../components/CodeEditor';
 import SpecViewerModal from '../components/SpecViewerModal';
 import CodeIcon from '@mui/icons-material/Code';
+import AddIcon from '@mui/icons-material/Add';
 
 const ViewAgent = () => {
   const { agentId } = useParams();
@@ -51,6 +58,9 @@ const ViewAgent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
+  const [selectedComposerModel, setSelectedComposerModel] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);  
   const [viewingSpec, setViewingSpec] = useState({ open: false, name: '', content: '' });
@@ -58,6 +68,15 @@ const ViewAgent = () => {
   // State for deployment
   const [deployment, setDeployment] = useState(null);
   const [isUndeploying, setIsUndeploying] = useState(false);
+
+  // State for model management
+  const [providers, setProviders] = useState({});
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [modelDialogOpen, setModelDialogOpen] = useState(false);
+  const [modelDialogMode, setModelDialogMode] = useState('invokable'); // 'invokable' or 'composer'
+  const [dialogProvider, setDialogProvider] = useState('');
+  const [dialogModel, setDialogModel] = useState('');
+  const [dialogParams, setDialogParams] = useState({});
 
   const isCreationFlow = !agentId;
 
@@ -76,6 +95,31 @@ const ViewAgent = () => {
         fetchDeploymentStatus();
     }
   }, [agentId]);
+
+  // Fetch providers for model selection
+  useEffect(() => {
+    const fetchProviders = async () => {
+      setLoadingProviders(true);
+      try {
+        const providersData = await chatService.getProviders();
+        setProviders(providersData);
+        // Set default provider if available
+        const defaultProvider = Object.keys(providersData)[0];
+        if (defaultProvider) {
+          setDialogProvider(defaultProvider);
+          const models = Object.keys(providersData[defaultProvider]?.models || {});
+          if (models.length > 0) {
+            setDialogModel(models[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching providers:', err);
+      } finally {
+        setLoadingProviders(false);
+      }
+    };
+    fetchProviders();
+  }, []);
 
     const loadAgentData = useCallback(async () => {
     setError(null);
@@ -198,6 +242,7 @@ const ViewAgent = () => {
         invokableModels: agent.invokableModels,
         gofannonAgents: (agent.gofannonAgents || []).map(ga => typeof ga === 'string' ? ga : ga.id),
         composerThoughts: agent.composerThoughts,
+        composerModelConfig: agent.composerModelConfig,
       });
       setSaveSuccess(true);
     } catch (err) {
@@ -205,6 +250,115 @@ const ViewAgent = () => {
     } finally {
         setIsSaving(false);
     }
+  };
+
+  const handleRegenerateCode = async () => {
+    if (!agent || !selectedComposerModel) return;
+    setRegenerateDialogOpen(false);
+    setError(null);
+    setSaveSuccess(false);
+    setIsRegenerating(true);
+    try {
+      const agentConfig = {
+        tools: agent.tools || {},
+        description: agent.description,
+        inputSchema: agent.inputSchema,
+        outputSchema: agent.outputSchema,
+        invokableModels: agent.invokableModels || [],
+        swaggerSpecs: agent.swaggerSpecs || [],
+        gofannonAgents: (agent.gofannonAgents || []).map(ga => typeof ga === 'string' ? ga : ga.id),
+        modelConfig: {
+          provider: selectedComposerModel.provider,
+          model: selectedComposerModel.model,
+          parameters: selectedComposerModel.parameters || {},
+        },
+      };
+
+      const response = await agentService.generateCode(agentConfig);
+      
+      // Update the agent state with new code, docstring, and composer model config
+      setAgent(prev => ({
+        ...prev,
+        code: response.code,
+        docstring: response.docstring,
+        friendlyName: response.friendlyName,
+        composerModelConfig: {
+          provider: selectedComposerModel.provider,
+          model: selectedComposerModel.model,
+          parameters: selectedComposerModel.parameters || {},
+        },
+      }));
+      
+      setSaveSuccess(true);
+    } catch (err) {
+      setError(err.message || 'Failed to regenerate code.');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const openRegenerateDialog = () => {
+    // Default to stored composer model, or first invokable model
+    if (agent?.composerModelConfig) {
+      setSelectedComposerModel(agent.composerModelConfig);
+    } else if (agent?.invokableModels?.length > 0) {
+      setSelectedComposerModel(agent.invokableModels[0]);
+    }
+    setRegenerateDialogOpen(true);
+  };
+
+  // Model management functions
+  const openModelDialog = (mode) => {
+    setModelDialogMode(mode);
+    // Reset dialog state
+    const defaultProvider = Object.keys(providers)[0] || '';
+    setDialogProvider(defaultProvider);
+    const models = Object.keys(providers[defaultProvider]?.models || {});
+    setDialogModel(models[0] || '');
+    setDialogParams({});
+    setModelDialogOpen(true);
+  };
+
+  const handleProviderChange = (provider) => {
+    setDialogProvider(provider);
+    const models = Object.keys(providers[provider]?.models || {});
+    setDialogModel(models[0] || '');
+    setDialogParams({});
+  };
+
+  const handleAddInvokableModel = () => {
+    if (!dialogProvider || !dialogModel) return;
+    const newModel = {
+      provider: dialogProvider,
+      model: dialogModel,
+      parameters: dialogParams,
+    };
+    setAgent(prev => ({
+      ...prev,
+      invokableModels: [...(prev.invokableModels || []), newModel],
+    }));
+    setModelDialogOpen(false);
+  };
+
+  const handleRemoveInvokableModel = (index) => {
+    setAgent(prev => ({
+      ...prev,
+      invokableModels: prev.invokableModels.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSetComposerModel = () => {
+    if (!dialogProvider || !dialogModel) return;
+    const newComposerConfig = {
+      provider: dialogProvider,
+      model: dialogModel,
+      parameters: dialogParams,
+    };
+    setAgent(prev => ({
+      ...prev,
+      composerModelConfig: newComposerConfig,
+    }));
+    setModelDialogOpen(false);
   };
 
   const handleDeleteAgent = async () => {
@@ -372,6 +526,77 @@ const ViewAgent = () => {
                 </AccordionDetails>
             </Accordion>
         )}
+
+        <Accordion defaultExpanded>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>Model Configuration</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                        Composer Model
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        The model used to generate agent code when you click "Regenerate Code".
+                    </Typography>
+                    {agent.composerModelConfig ? (
+                        <Chip 
+                            label={`${agent.composerModelConfig.provider}/${agent.composerModelConfig.model}`} 
+                            color="primary" 
+                            sx={{ mr: 1, mt: 1 }}
+                            onDelete={() => setAgent(prev => ({ ...prev, composerModelConfig: null }))}
+                        />
+                    ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
+                            No composer model configured. Will use first invokable model.
+                        </Typography>
+                    )}
+                    <Button 
+                        size="small" 
+                        startIcon={<EditIcon />} 
+                        onClick={() => openModelDialog('composer')}
+                        sx={{ ml: 1, mt: 1 }}
+                    >
+                        {agent.composerModelConfig ? 'Change' : 'Set'}
+                    </Button>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Box>
+                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                        Invokable Models
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Models the agent can call at runtime via litellm.acompletion().
+                    </Typography>
+                    {agent.invokableModels && agent.invokableModels.length > 0 ? (
+                        <Box sx={{ mt: 1 }}>
+                            {agent.invokableModels.map((m, idx) => (
+                                <Chip 
+                                    key={idx}
+                                    label={`${m.provider}/${m.model}`} 
+                                    sx={{ mr: 1, mb: 1 }}
+                                    onDelete={() => handleRemoveInvokableModel(idx)}
+                                />
+                            ))}
+                        </Box>
+                    ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
+                            No invokable models configured.
+                        </Typography>
+                    )}
+                    <Button 
+                        size="small" 
+                        startIcon={<AddIcon />} 
+                        onClick={() => openModelDialog('invokable')}
+                        sx={{ mt: 1 }}
+                    >
+                        Add Model
+                    </Button>
+                </Box>
+            </AccordionDetails>
+        </Accordion>
         
         <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -460,11 +685,22 @@ const ViewAgent = () => {
             )}
             {!isCreationFlow && (
                 <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={isRegenerating ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
+                    onClick={openRegenerateDialog}
+                    disabled={isRegenerating || isSaving}
+                >
+                    {isRegenerating ? 'Regenerating...' : 'Regenerate Code'}
+                </Button>
+            )}
+            {!isCreationFlow && (
+                <Button
                     variant="contained"
                     color="primary"
                     startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
                     onClick={handleUpdateAgent}
-                    disabled={isSaving}
+                    disabled={isSaving || isRegenerating}
                 >
                     {isSaving ? 'Updating...' : 'Update Agent'}
                 </Button>
@@ -488,6 +724,134 @@ const ViewAgent = () => {
                 </Button>
             </DialogActions>
         </Dialog> 
+        <Dialog
+            open={regenerateDialogOpen}
+            onClose={() => setRegenerateDialogOpen(false)}
+        >
+            <DialogTitle>Regenerate Agent Code</DialogTitle>
+            <DialogContent>
+                <DialogContentText sx={{ mb: 2 }}>
+                    Select which model to use for code generation. The code will be regenerated based on the current description.
+                </DialogContentText>
+                <FormControl fullWidth sx={{ mt: 1 }}>
+                    <InputLabel>Composer Model</InputLabel>
+                    <Select
+                        value={selectedComposerModel ? `${selectedComposerModel.provider}/${selectedComposerModel.model}` : ''}
+                        label="Composer Model"
+                        onChange={(e) => {
+                            const [provider, ...modelParts] = e.target.value.split('/');
+                            const model = modelParts.join('/'); // Handle models with / in name
+                            // Check if it's the stored composer config
+                            if (agent?.composerModelConfig && 
+                                agent.composerModelConfig.provider === provider && 
+                                agent.composerModelConfig.model === model) {
+                                setSelectedComposerModel(agent.composerModelConfig);
+                            } else {
+                                // Find from invokable models
+                                const selected = agent?.invokableModels?.find(m => m.provider === provider && m.model === model);
+                                if (selected) {
+                                    setSelectedComposerModel(selected);
+                                } else {
+                                    setSelectedComposerModel({ provider, model, parameters: {} });
+                                }
+                            }
+                        }}
+                    >
+                        {agent?.composerModelConfig && (
+                            <MenuItem value={`${agent.composerModelConfig.provider}/${agent.composerModelConfig.model}`}>
+                                {agent.composerModelConfig.provider}/{agent.composerModelConfig.model} (stored composer)
+                            </MenuItem>
+                        )}
+                        {agent?.invokableModels?.filter(m => 
+                            !agent?.composerModelConfig || 
+                            m.provider !== agent.composerModelConfig.provider || 
+                            m.model !== agent.composerModelConfig.model
+                        ).map((m, idx) => (
+                            <MenuItem key={idx} value={`${m.provider}/${m.model}`}>
+                                {m.provider}/{m.model}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                {(!agent?.invokableModels?.length && !agent?.composerModelConfig) && (
+                    <Alert severity="warning" sx={{ mt: 2 }}>No models configured for this agent. Please add a model first.</Alert>
+                )}
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setRegenerateDialogOpen(false)}>Cancel</Button>
+                <Button 
+                    onClick={handleRegenerateCode} 
+                    color="primary" 
+                    variant="contained"
+                    disabled={!selectedComposerModel}
+                >
+                    Regenerate
+                </Button>
+            </DialogActions>
+        </Dialog>
+
+        {/* Model Selection Dialog */}
+        <Dialog
+            open={modelDialogOpen}
+            onClose={() => setModelDialogOpen(false)}
+            maxWidth="sm"
+            fullWidth
+        >
+            <DialogTitle>
+                {modelDialogMode === 'composer' ? 'Set Composer Model' : 'Add Invokable Model'}
+            </DialogTitle>
+            <DialogContent>
+                <DialogContentText sx={{ mb: 2 }}>
+                    {modelDialogMode === 'composer' 
+                        ? 'Select the model to use for code generation.'
+                        : 'Select a model the agent can call at runtime.'}
+                </DialogContentText>
+                {loadingProviders ? (
+                    <CircularProgress />
+                ) : Object.keys(providers).length === 0 ? (
+                    <Alert severity="warning">No providers available. Check your API keys.</Alert>
+                ) : (
+                    <>
+                        <FormControl fullWidth sx={{ mt: 1, mb: 2 }}>
+                            <InputLabel>Provider</InputLabel>
+                            <Select
+                                value={dialogProvider}
+                                label="Provider"
+                                onChange={(e) => handleProviderChange(e.target.value)}
+                            >
+                                {Object.keys(providers).map(p => (
+                                    <MenuItem key={p} value={p}>{p}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <FormControl fullWidth sx={{ mb: 2 }}>
+                            <InputLabel>Model</InputLabel>
+                            <Select
+                                value={dialogModel}
+                                label="Model"
+                                onChange={(e) => setDialogModel(e.target.value)}
+                            >
+                                {Object.keys(providers[dialogProvider]?.models || {}).map(m => (
+                                    <MenuItem key={m} value={m}>{m}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </>
+                )}
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setModelDialogOpen(false)}>Cancel</Button>
+                <Button 
+                    onClick={modelDialogMode === 'composer' ? handleSetComposerModel : handleAddInvokableModel}
+                    color="primary" 
+                    variant="contained"
+                    disabled={!dialogProvider || !dialogModel}
+                >
+                    {modelDialogMode === 'composer' ? 'Set Model' : 'Add Model'}
+                </Button>
+            </DialogActions>
+        </Dialog>
+
         <SpecViewerModal
             open={viewingSpec.open}
             onClose={() => setViewingSpec({ open: false, name: '', content: '' })}
