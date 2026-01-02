@@ -208,16 +208,23 @@ Do not include any other text or markdown formatting around the JSON object.
 
     header = """from agent_factory.remote_mcp_client import RemoteMCPClient
 import litellm
+import httpx
 
 async def run(input_dict, tools):
-    mcpc = { url : RemoteMCPClient(remote_url = url) for url in tools.keys() }"""
+    mcpc = { url : RemoteMCPClient(remote_url = url) for url in tools.keys() }
+    http_client = httpx.AsyncClient()
+    try:"""
     
-    # Use dedent to remove any common leading whitespace, then re-indent with 4 spaces
+    # Use dedent to remove any common leading whitespace, then re-indent with 8 spaces (inside try block)
     import textwrap
     dedented_body = textwrap.dedent(code_body)
-    indented_body = "\n".join(["    " + line if line.strip() else "" for line in dedented_body.split('\n')])
+    indented_body = "\n".join(["        " + line if line.strip() else "" for line in dedented_body.split('\n')])
     
-    full_code = f"{header}\n{indented_body}"
+    footer = """
+    finally:
+        await http_client.aclose()"""
+    
+    full_code = f"{header}\n{indented_body}\n{footer}"
 
     # ---- Process Name and Docstring Response ----
     try:

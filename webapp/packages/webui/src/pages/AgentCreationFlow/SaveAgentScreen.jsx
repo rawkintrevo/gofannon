@@ -27,6 +27,7 @@ const SaveAgentScreen = () => {
     docstring,
     invokableModels,
     gofannonAgents,
+    composerModelConfig,
   } = useAgentFlow();
   const [agentName, setAgentName] = useState(friendlyName || ''); // Pre-fill with existing friendly name if available
   const [description, setDescription] = useState(agentDescription); // Pre-fill with existing description
@@ -67,13 +68,14 @@ const SaveAgentScreen = () => {
       outputSchema: outputSchema,
       invokableModels: invokableModels,
       gofannonAgents: (gofannonAgents || []).map(agent => agent.id),
+      composerModelConfig: composerModelConfig,
     };
 
     try {
       await agentService.saveAgent(agentData);
       setSuccess(true);
       setTimeout(() => {
-        navigate('/'); // Navigate to home page after successful save
+        navigate('/agents'); // Navigate to agents list after successful save
       }, 1500);
     } catch (err) {
       setError(err.message || 'Failed to save agent.');
