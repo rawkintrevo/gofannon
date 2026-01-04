@@ -10,7 +10,6 @@ import DemoAppsPage from '../pages/DemoAppsPage';
 import ViewDemoAppPage from '../pages/ViewDemoAppPage';
 import ToolsScreen from '../pages/AgentCreationFlow/ToolsScreen';
 import DescriptionScreen from '../pages/AgentCreationFlow/DescriptionScreen';
-import SchemasScreen from '../pages/AgentCreationFlow/SchemasScreen';
 import SandboxScreen from '../pages/AgentCreationFlow/SandboxScreen';
 import DeployScreen from '../pages/AgentCreationFlow/DeployScreen';
 import SaveAgentScreen from '../pages/AgentCreationFlow/SaveAgentScreen';
@@ -103,8 +102,8 @@ export const defaultRoutes = [
       { index: true, element: <Navigate to="tools" replace />, private: false, layout: false },
       { path: 'tools', element: <ToolsScreen />, private: false, layout: false },
       { path: 'description', element: <DescriptionScreen />, private: false, layout: false },
-      { path: 'schemas', element: <SchemasScreen />, private: false, layout: false },
-      { path: 'code', element: <ViewAgent isCreating />, private: false, layout: false },
+      { path: 'schemas', element: <Navigate to="/create-agent/code" replace />, private: false, layout: false }, // Redirect legacy route
+      { path: 'code', element: <ViewAgent />, private: false, layout: false },
       { path: 'sandbox', element: <SandboxScreen />, private: false, layout: false },
       { path: 'deploy', element: <DeployScreen />, private: false, layout: false },
       { path: 'save', element: <SaveAgentScreen />, private: false, layout: false },

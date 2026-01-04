@@ -23,10 +23,8 @@ import {
   DialogContentText,
   IconButton,
   DialogTitle,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Grid,
+  Divider,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -39,7 +37,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Divider from '@mui/material/Divider';
+import CodeIcon from '@mui/icons-material/Code';
+import AddIcon from '@mui/icons-material/Add';
 
 import { useAgentFlow } from './AgentCreationFlow/AgentCreationFlowContext';
 import agentService from '../services/agentService';
@@ -47,8 +46,7 @@ import chatService from '../services/chatService';
 import CodeEditor from '../components/CodeEditor';
 import SpecViewerModal from '../components/SpecViewerModal';
 import ModelConfigDialog from '../components/ModelConfigDialog';
-import CodeIcon from '@mui/icons-material/Code';
-import AddIcon from '@mui/icons-material/Add';
+import SchemaEditor from '../components/SchemaEditor';
 
 const ViewAgent = () => {
   const { agentId } = useParams();
@@ -59,9 +57,7 @@ const ViewAgent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
-  const [selectedComposerModel, setSelectedComposerModel] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);  
   const [viewingSpec, setViewingSpec] = useState({ open: false, name: '', content: '' });
@@ -82,6 +78,7 @@ const ViewAgent = () => {
   const [dialogBuiltInTool, setDialogBuiltInTool] = useState('');
 
   const isCreationFlow = !agentId;
+  const hasCode = agent?.code && agent.code.trim() !== '';
 
   useEffect(() => {
     if (agentId) { // Only for existing agents, not during creation flow
@@ -124,24 +121,29 @@ const ViewAgent = () => {
     fetchProviders();
   }, []);
 
-    const loadAgentData = useCallback(async () => {
+  // Track if initial load has been done for creation flow
+  const initialLoadDone = React.useRef(false);
+
+  const loadAgentData = useCallback(async () => {
+    // For creation flow, only load from context once on initial mount
+    if (isCreationFlow && initialLoadDone.current) {
+      return;
+    }
+    
     setError(null);
     setLoading(true);
     
     try {
       if (isCreationFlow) {
         // In creation flow, data comes from context
-        if (!agentFlowContext.generatedCode) {
-            throw new Error("Agent code has not been generated yet. Please go back to the schemas screen.");
-        }
-        
+        // Code may or may not exist yet
         setAgent({
           name: agentFlowContext.friendlyName || '',
           description: agentFlowContext.description,
           tools: agentFlowContext.tools,
           swaggerSpecs: agentFlowContext.swaggerSpecs,
           gofannonAgents: agentFlowContext.gofannonAgents,
-          code: agentFlowContext.generatedCode,
+          code: agentFlowContext.generatedCode || '',
           inputSchema: agentFlowContext.inputSchema,
           outputSchema: agentFlowContext.outputSchema,
           invokableModels: agentFlowContext.invokableModels,
@@ -149,6 +151,7 @@ const ViewAgent = () => {
           docstring: agentFlowContext.docstring,
           friendlyName: agentFlowContext.friendlyName,
         });
+        initialLoadDone.current = true;
 
       } else {
         // In view/edit mode, fetch from API
@@ -159,33 +162,24 @@ const ViewAgent = () => {
             const allAgents = await agentService.getAgents();
             const agentMap = new Map(allAgents.map(a => [a._id, a.name]));
             data.gofannonAgents = data.gofannonAgents.map(id => ({
-                id: id,
-                name: agentMap.get(id) || `Unknown Agent (ID: ${id})`
+                id,
+                name: agentMap.get(id) || id,
             }));
-        } else {
-            data.gofannonAgents = []; // Ensure it's an array
         }
         
         setAgent(data);
       }
     } catch (err) {
-      setError(err.message || 'Failed to load agent data.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [agentId, isCreationFlow, agentFlowContext]);
+  }, [agentId, isCreationFlow]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: agentFlowContext intentionally excluded - we only load from context once on mount
 
   useEffect(() => {
     loadAgentData();
   }, [loadAgentData]);
-  
-  const handleFieldChange = (field, value) => {
-    setAgent(prev => ({...prev, [field]: value}));
-  };
-
-  const handleViewSpec = (spec) => {
-    setViewingSpec({ open: true, name: spec.name, content: spec.content });
-};
 
   const updateContextAndNavigate = (path) => {
       // Update the context with the current agent state before navigating
@@ -201,25 +195,20 @@ const ViewAgent = () => {
       agentFlowContext.setGofannonAgents(agent.gofannonAgents);
       agentFlowContext.setFriendlyName(agent.friendlyName);
       navigate(path);
-    
   };
 
   const handleRunInSandbox = () => {
     if (agentId) {
-      // For saved agents, navigate to agent-specific sandbox route
       updateContextAndNavigate(`/agent/${agentId}/sandbox`);
     } else {
-      // For creation flow, navigate to creation sandbox
       updateContextAndNavigate('/create-agent/sandbox');
     }
   };
 
   const handleDeploy = () => {
     if (agentId) {
-      // For saved agents, navigate directly to deploy screen with agentId
       navigate(`/agent/${agentId}/deploy`);
     } else {
-      // For unsaved agents (creation flow), update context and navigate
       updateContextAndNavigate('/create-agent/deploy');
     }
   };
@@ -229,44 +218,48 @@ const ViewAgent = () => {
   };
 
   const handleUpdateAgent = async () => {
-    if (!agentId) return; // Should not happen if button is only for edit mode
+    if (!agentId || !agent) return;
     setError(null);
     setSaveSuccess(false);
     setIsSaving(true);
+
     try {
-      await agentService.updateAgent(agentId, {
+      const updatePayload = {
         name: agent.name,
         description: agent.description,
         code: agent.code,
-        docstring: agent.docstring,
-        friendlyName: agent.friendlyName,
-        tools: agent.tools || {},
-        swaggerSpecs: agent.swaggerSpecs || [],
+        tools: agent.tools,
+        swaggerSpecs: agent.swaggerSpecs,
+        gofannonAgents: agent.gofannonAgents?.map(ga => typeof ga === 'string' ? ga : ga.id),
         inputSchema: agent.inputSchema,
         outputSchema: agent.outputSchema,
         invokableModels: agent.invokableModels,
-        gofannonAgents: (agent.gofannonAgents || []).map(ga => typeof ga === 'string' ? ga : ga.id),
-        composerThoughts: agent.composerThoughts,
         composerModelConfig: agent.composerModelConfig,
-      });
+        docstring: agent.docstring,
+        friendlyName: agent.friendlyName,
+      };
+      await agentService.updateAgent(agentId, updatePayload);
       setSaveSuccess(true);
     } catch (err) {
-        setError(err.message || 'Failed to update agent.');
+      setError(err.message || 'Failed to update agent.');
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
-  const handleRegenerateCode = async () => {
-    if (!agent || !selectedComposerModel) return;
-    if (!agent.description || agent.description.trim() === '') {
-      setError('Description is required to generate code. Please add a description first.');
+  const handleGenerateCode = async () => {
+    if (!agent.composerModelConfig) {
+      setError('Please select a composer model before generating code.');
       return;
     }
-    setRegenerateDialogOpen(false);
+    if (!agent.description || agent.description.trim() === '') {
+      setError('Description is required to generate code.');
+      return;
+    }
+
     setError(null);
-    setSaveSuccess(false);
-    setIsRegenerating(true);
+    setIsGenerating(true);
+
     try {
       const agentConfig = {
         tools: agent.tools || {},
@@ -276,69 +269,72 @@ const ViewAgent = () => {
         invokableModels: agent.invokableModels || [],
         swaggerSpecs: agent.swaggerSpecs || [],
         gofannonAgents: (agent.gofannonAgents || []).map(ga => typeof ga === 'string' ? ga : ga.id),
-        builtInTools: selectedComposerModel.builtInTool ? [selectedComposerModel.builtInTool] : [],
+        builtInTools: agent.composerModelConfig?.builtInTool ? [agent.composerModelConfig.builtInTool] : [],
         modelConfig: {
-          provider: selectedComposerModel.provider,
-          model: selectedComposerModel.model,
-          parameters: selectedComposerModel.parameters || {},
+          provider: agent.composerModelConfig.provider,
+          model: agent.composerModelConfig.model,
+          parameters: agent.composerModelConfig.parameters || {},
         },
       };
 
       const response = await agentService.generateCode(agentConfig);
       
-      // Update the agent state with new code, docstring, and composer model config
       setAgent(prev => ({
         ...prev,
         code: response.code,
         docstring: response.docstring,
         friendlyName: response.friendlyName,
-        composerModelConfig: {
-          provider: selectedComposerModel.provider,
-          model: selectedComposerModel.model,
-          parameters: selectedComposerModel.parameters || {},
-          builtInTool: selectedComposerModel.builtInTool || null,
-        },
+        name: response.friendlyName,
       }));
-      
+
+      // Also update context if in creation flow
+      if (isCreationFlow) {
+        agentFlowContext.setGeneratedCode(response.code);
+        agentFlowContext.setDocstring(response.docstring);
+        agentFlowContext.setFriendlyName(response.friendlyName);
+      }
+
       setSaveSuccess(true);
     } catch (err) {
-      setError(err.message || 'Failed to regenerate code.');
+      setError(err.message || 'Failed to generate code.');
     } finally {
-      setIsRegenerating(false);
+      setIsGenerating(false);
     }
   };
 
-  const openRegenerateDialog = () => {
-    // Default to stored composer model, or first invokable model
-    if (agent?.composerModelConfig) {
-      setSelectedComposerModel(agent.composerModelConfig);
-    } else if (agent?.invokableModels?.length > 0) {
-      setSelectedComposerModel(agent.invokableModels[0]);
+  const handleFieldChange = (field, value) => {
+    setAgent((prev) => ({ ...prev, [field]: value }));
+    setSaveSuccess(false);
+    // Sync to context in creation flow
+    if (isCreationFlow) {
+      if (field === 'description') {
+        agentFlowContext.setDescription(value);
+      } else if (field === 'code') {
+        agentFlowContext.setGeneratedCode(value);
+      }
     }
-    setRegenerateDialogOpen(true);
   };
 
-  // Model management functions
+  const handleViewSpec = (spec) => {
+    setViewingSpec({ open: true, name: spec.name, content: spec.content });
+  };
+
+  // Model Dialog functions
   const openModelDialog = (mode) => {
     setModelDialogMode(mode);
-    // Reset dialog state with defaults
     const defaultProvider = Object.keys(providers)[0] || '';
     setDialogProvider(defaultProvider);
     const models = Object.keys(providers[defaultProvider]?.models || {});
     const defaultModel = models[0] || '';
     setDialogModel(defaultModel);
-    // Initialize param schema and defaults
+    
+    // Initialize param schema and default params
     const modelParams = providers[defaultProvider]?.models?.[defaultModel]?.parameters || {};
     setDialogParamSchema(modelParams);
-    // Only set params with non-null defaults
-    // For Anthropic, skip top_p (use temperature by default) since they're mutually exclusive
     const defaultParams = {};
     Object.keys(modelParams).forEach(key => {
       if (modelParams[key].default !== null) {
-        // Skip top_p for Anthropic - use temperature by default
-        if (key === 'top_p' && defaultProvider === 'anthropic') {
-          return;
-        }
+        if (key === 'top_p' && defaultProvider === 'anthropic') return;
         defaultParams[key] = modelParams[key].default;
       }
     });
@@ -347,14 +343,37 @@ const ViewAgent = () => {
     setModelDialogOpen(true);
   };
 
-  // This function is not used directly - ModelConfigDialog handles provider/model changes internally
-  // But we need it for the props interface
-  const handleDialogProviderChange = (provider) => {
-    setDialogProvider(provider);
+  const handleDialogProviderChange = (newProvider) => {
+    setDialogProvider(newProvider);
+    const models = Object.keys(providers[newProvider]?.models || {});
+    const firstModel = models[0] || '';
+    setDialogModel(firstModel);
+    const modelParams = providers[newProvider]?.models?.[firstModel]?.parameters || {};
+    setDialogParamSchema(modelParams);
+    const defaultParams = {};
+    Object.keys(modelParams).forEach(key => {
+      if (modelParams[key].default !== null) {
+        if (key === 'top_p' && newProvider === 'anthropic') return;
+        defaultParams[key] = modelParams[key].default;
+      }
+    });
+    setDialogParams(defaultParams);
+    setDialogBuiltInTool('');
   };
 
-  const handleDialogModelChange = (model) => {
-    setDialogModel(model);
+  const handleDialogModelChange = (newModel) => {
+    setDialogModel(newModel);
+    const modelParams = providers[dialogProvider]?.models?.[newModel]?.parameters || {};
+    setDialogParamSchema(modelParams);
+    const defaultParams = {};
+    Object.keys(modelParams).forEach(key => {
+      if (modelParams[key].default !== null) {
+        if (key === 'top_p' && dialogProvider === 'anthropic') return;
+        defaultParams[key] = modelParams[key].default;
+      }
+    });
+    setDialogParams(defaultParams);
+    setDialogBuiltInTool('');
   };
 
   const handleAddInvokableModel = () => {
@@ -365,18 +384,28 @@ const ViewAgent = () => {
       parameters: dialogParams,
       builtInTool: dialogBuiltInTool || null,
     };
+    const newInvokableModels = [...(agent.invokableModels || []), newModel];
     setAgent(prev => ({
       ...prev,
-      invokableModels: [...(prev.invokableModels || []), newModel],
+      invokableModels: newInvokableModels,
     }));
+    // Sync to context in creation flow
+    if (isCreationFlow) {
+      agentFlowContext.setInvokableModels(newInvokableModels);
+    }
     setModelDialogOpen(false);
   };
 
   const handleRemoveInvokableModel = (index) => {
+    const newInvokableModels = agent.invokableModels.filter((_, i) => i !== index);
     setAgent(prev => ({
       ...prev,
-      invokableModels: prev.invokableModels.filter((_, i) => i !== index),
+      invokableModels: newInvokableModels,
     }));
+    // Sync to context in creation flow
+    if (isCreationFlow) {
+      agentFlowContext.setInvokableModels(newInvokableModels);
+    }
   };
 
   const handleSetComposerModel = () => {
@@ -391,6 +420,10 @@ const ViewAgent = () => {
       ...prev,
       composerModelConfig: newComposerConfig,
     }));
+    // Sync to context in creation flow
+    if (isCreationFlow) {
+      agentFlowContext.setComposerModelConfig(newComposerConfig);
+    }
     setModelDialogOpen(false);
   };
 
@@ -398,26 +431,24 @@ const ViewAgent = () => {
     if (!agentId) return;
     setDeleteConfirmationOpen(false);
     setError(null);
-    setIsSaving(true); // Reuse saving state for loading indicator
+    setIsSaving(true);
 
     try {
       await agentService.deleteAgent(agentId);
-      navigate('/agents', { replace: true }); // Redirect after deletion
+      navigate('/agents', { replace: true });
     } catch (err) {
       setError(err.message || 'Failed to delete agent.');
-      // Stay on the page to show the error
+    } finally {
       setIsSaving(false);
     }
-    // On success, isSaving will not be set to false because we navigate away.    
   };
 
   const handleUndeploy = async () => {
-    if (!agentId) return;
+    if (!agentId || !deployment?.is_deployed) return;
     setIsUndeploying(true);
     setError(null);
     try {
         await agentService.undeployAgent(agentId);
-        // Update UI immediately to reflect the undeployed state
         setDeployment({ is_deployed: false });
     } catch (err) {
         setError(err.message || 'Failed to undeploy agent.');
@@ -426,6 +457,20 @@ const ViewAgent = () => {
     }
   };
 
+  // Schema handlers for creation flow
+  const handleInputSchemaChange = (newSchema) => {
+    setAgent(prev => ({ ...prev, inputSchema: newSchema }));
+    if (isCreationFlow) {
+      agentFlowContext.setInputSchema(newSchema);
+    }
+  };
+
+  const handleOutputSchemaChange = (newSchema) => {
+    setAgent(prev => ({ ...prev, outputSchema: newSchema }));
+    if (isCreationFlow) {
+      agentFlowContext.setOutputSchema(newSchema);
+    }
+  };
 
   if (loading) {
     return (
@@ -435,10 +480,6 @@ const ViewAgent = () => {
     );
   }
 
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
-
   if (!agent) {
     return <Alert severity="warning">No agent data found.</Alert>;
   }
@@ -446,21 +487,31 @@ const ViewAgent = () => {
   return (
     <Paper sx={{ p: 3, maxWidth: 900, margin: 'auto', mt: 4 }}>
         <Typography variant="h5" component="h2" gutterBottom>
-            {isCreationFlow ? 'Review Your New Agent' : `Viewing Agent: ${agent.name}`}
+            {isCreationFlow 
+              ? (hasCode ? 'Review Your Agent' : 'Configure Your Agent')
+              : `Agent: ${agent.name}`}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {isCreationFlow ? 'Review the generated code and details below. You can make edits before proceeding.' : 'View and edit the details of your saved agent.'}
+            {isCreationFlow 
+              ? (hasCode 
+                  ? 'Review the generated code. You can edit the description, schemas, or models and regenerate.'
+                  : 'Configure schemas and models, then generate the agent code.')
+              : 'View and edit your agent configuration.'}
         </Typography>
 
-        {saveSuccess && <Alert severity="success" onClose={() => setSaveSuccess(false)}>Agent updated successfully!</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+        {saveSuccess && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSaveSuccess(false)}>
+          {hasCode ? 'Operation completed successfully!' : 'Code generated successfully!'}
+        </Alert>}
 
-        <Accordion defaultExpanded>
+        {/* Tools & Specs Section */}
+        <Accordion defaultExpanded={!hasCode}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography>Tools & Specs</Typography>
             </AccordionSummary>
             <AccordionDetails>
                 <Typography variant="subtitle1" gutterBottom>MCP Servers</Typography>
-                {Object.keys(agent.tools).length > 0 ? (
+                {Object.keys(agent.tools || {}).length > 0 ? (
                 <List dense>
                     {Object.entries(agent.tools).map(([url, selectedTools]) => (
                         <ListItem key={url}>
@@ -470,8 +521,9 @@ const ViewAgent = () => {
                     ))}
                 </List>
                 ) : (<Typography variant="body2" color="text.secondary">No MCP servers configured.</Typography>)}
+                
                 <Typography variant="subtitle1" gutterBottom sx={{mt: 2}}>Swagger/OpenAPI Specs</Typography>
-                {agent.swaggerSpecs.length > 0 ? (
+                {agent.swaggerSpecs?.length > 0 ? (
                 <List dense>
                     {agent.swaggerSpecs.map(spec => (
                         <ListItem
@@ -501,20 +553,19 @@ const ViewAgent = () => {
                 </List>
                 ) : (<Typography variant="body2" color="text.secondary">No Gofannon agents configured.</Typography>)}
                 
-                {!isCreationFlow && (
-                  <Button
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                    onClick={handleEditTools}
-                    sx={{ mt: 2 }}
-                  >
-                    Edit Tools & Specs
-                  </Button>
-                )}
+                <Button
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={handleEditTools}
+                  sx={{ mt: 2 }}
+                >
+                  Edit Tools & Specs
+                </Button>
             </AccordionDetails>
         </Accordion>
 
-        <Accordion>
+        {/* Description Section */}
+        <Accordion defaultExpanded={!hasCode}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography>Description</Typography>
             </AccordionSummary>
@@ -524,42 +575,42 @@ const ViewAgent = () => {
                     multiline
                     rows={4}
                     label="Agent Description"
-                    value={agent.description}
+                    value={agent.description || ''}
                     onChange={(e) => handleFieldChange('description', e.target.value)}
+                    placeholder="Describe what your agent should do..."
                 />
             </AccordionDetails>
         </Accordion>
 
-        {agent.docstring && (
-            <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography>Generated Docstring</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper', overflowX: 'auto', border: '1px solid #444' }}>
-                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
-                            {agent.docstring}
-                        </pre>
-                    </Paper>
-                </AccordionDetails>
-            </Accordion>
-        )}
+        {/* Schemas Section */}
+        <Accordion defaultExpanded={!hasCode}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>Input/Output Schemas</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Define the JSON structure for your agent's input and output.
+                </Typography>
+                <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                        <SchemaEditor
+                            title="Input Schema"
+                            schema={agent.inputSchema || {}}
+                            setSchema={handleInputSchemaChange}
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <SchemaEditor
+                            title="Output Schema"
+                            schema={agent.outputSchema || {}}
+                            setSchema={handleOutputSchemaChange}
+                        />
+                    </Grid>
+                </Grid>
+            </AccordionDetails>
+        </Accordion>
 
-        {agent.composerThoughts && (
-            <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography>Composer Thoughts</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper', overflowX: 'auto', border: '1px solid #444', maxHeight: '300px' }}>
-                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
-                            {JSON.stringify(agent.composerThoughts, null, 2)}
-                        </pre>
-                    </Paper>
-                </AccordionDetails>
-            </Accordion>
-        )}
-
+        {/* Model Configuration Section */}
         <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography>Model Configuration</Typography>
@@ -570,7 +621,7 @@ const ViewAgent = () => {
                         Composer Model
                     </Typography>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                        The model used to generate agent code when you click "Regenerate Code".
+                        The model used to generate agent code.
                     </Typography>
                     {agent.composerModelConfig ? (
                         (() => {
@@ -589,7 +640,7 @@ const ViewAgent = () => {
                         })()
                     ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
-                            No composer model configured. Will use first invokable model.
+                            No composer model configured.
                         </Typography>
                     )}
                     <Button 
@@ -597,8 +648,9 @@ const ViewAgent = () => {
                         startIcon={<EditIcon />} 
                         onClick={() => openModelDialog('composer')}
                         sx={{ ml: 1, mt: 1 }}
+                        disabled={loadingProviders}
                     >
-                        {agent.composerModelConfig ? 'Change' : 'Set'}
+                        {agent.composerModelConfig ? 'Change' : 'Set Model'}
                     </Button>
                 </Box>
 
@@ -638,22 +690,59 @@ const ViewAgent = () => {
                         startIcon={<AddIcon />} 
                         onClick={() => openModelDialog('invokable')}
                         sx={{ mt: 1 }}
+                        disabled={loadingProviders}
                     >
                         Add Model
                     </Button>
                 </Box>
             </AccordionDetails>
         </Accordion>
-        
-        <Accordion defaultExpanded>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography>Agent Code</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-                <CodeEditor code={agent.code} onCodeChange={(newCode) => handleFieldChange('code', newCode)} isReadOnly={false}/>
-            </AccordionDetails>
-        </Accordion>
 
+        {/* Docstring Section - only show if exists */}
+        {agent.docstring && (
+            <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography>Generated Docstring</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper', overflowX: 'auto', border: '1px solid #444' }}>
+                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
+                            {agent.docstring}
+                        </pre>
+                    </Paper>
+                </AccordionDetails>
+            </Accordion>
+        )}
+
+        {/* Composer Thoughts Section - only show if exists */}
+        {agent.composerThoughts && (
+            <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography>Composer Thoughts</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper', overflowX: 'auto', border: '1px solid #444', maxHeight: '300px' }}>
+                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
+                            {JSON.stringify(agent.composerThoughts, null, 2)}
+                        </pre>
+                    </Paper>
+                </AccordionDetails>
+            </Accordion>
+        )}
+
+        {/* Agent Code Section - only show if code exists */}
+        {hasCode && (
+            <Accordion defaultExpanded>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography>Agent Code</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <CodeEditor code={agent.code} onCodeChange={(newCode) => handleFieldChange('code', newCode)} isReadOnly={false}/>
+                </AccordionDetails>
+            </Accordion>
+        )}
+
+        {/* Deployments Section - only show for existing deployed agents */}
         {!isCreationFlow && deployment && deployment.is_deployed && (
             <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -690,7 +779,8 @@ const ViewAgent = () => {
             </Accordion>
         )}
 
-        <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{mt: 3}}>
+        {/* Action Buttons */}
+        <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{mt: 3}} flexWrap="wrap" useFlexGap>
             {!isCreationFlow && (
                 <Button
                     variant="outlined"
@@ -701,59 +791,78 @@ const ViewAgent = () => {
                 >
                     Delete Agent
                 </Button>
-            )}          
-            <Button
-                variant="outlined"
-                startIcon={<PlayArrowIcon />}
-                onClick={handleRunInSandbox}
-            >
-                Run in Sandbox
-            </Button>
-            
-            <Button
-                variant="outlined"
-                color="secondary"
-                startIcon={<PublishIcon />}
-                onClick={handleDeploy}
-                disabled={isCreationFlow && !agentFlowContext.friendlyName} // Disable if not saved
-                title={isCreationFlow && !agentFlowContext.friendlyName ? "Please save your agent before deploying" : ""}
-            >
-                Deploy Agent
-            </Button>
-            {isCreationFlow && (
+            )}
+
+            {/* Generate/Regenerate Code Button */}
+            {!hasCode ? (
                 <Button
                     variant="contained"
                     color="primary"
-                    startIcon={<SaveIcon />}
-                    onClick={() => navigate('/create-agent/save')}
+                    startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <CodeIcon />}
+                    onClick={handleGenerateCode}
+                    disabled={isGenerating || !agent.composerModelConfig}
                 >
-                    Save Agent
+                    {isGenerating ? 'Generating...' : 'Generate Code'}
                 </Button>
-            )}
-            {!isCreationFlow && (
+            ) : (
                 <Button
                     variant="outlined"
                     color="secondary"
-                    startIcon={isRegenerating ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
-                    onClick={openRegenerateDialog}
-                    disabled={isRegenerating || isSaving}
+                    startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
+                    onClick={handleGenerateCode}
+                    disabled={isGenerating || isSaving}
                 >
-                    {isRegenerating ? 'Regenerating...' : 'Regenerate Code'}
+                    {isGenerating ? 'Regenerating...' : 'Regenerate Code'}
                 </Button>
             )}
-            {!isCreationFlow && (
-                <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                    onClick={handleUpdateAgent}
-                    disabled={isSaving || isRegenerating}
-                >
-                    {isSaving ? 'Updating...' : 'Update Agent'}
-                </Button>
+
+            {/* Only show these when code exists */}
+            {hasCode && (
+                <>
+                    <Button
+                        variant="outlined"
+                        startIcon={<PlayArrowIcon />}
+                        onClick={handleRunInSandbox}
+                    >
+                        Run in Sandbox
+                    </Button>
+                    
+                    <Button
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<PublishIcon />}
+                        onClick={handleDeploy}
+                    >
+                        Deploy Agent
+                    </Button>
+
+                    {isCreationFlow ? (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<SaveIcon />}
+                            onClick={() => {
+                              updateContextAndNavigate('/create-agent/save');
+                            }}
+                        >
+                            Save Agent
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                            onClick={handleUpdateAgent}
+                            disabled={isSaving || isGenerating}
+                        >
+                            {isSaving ? 'Updating...' : 'Update Agent'}
+                        </Button>
+                    )}
+                </>
             )}
         </Stack>
 
+        {/* Delete Confirmation Dialog */}
         <Dialog
             open={deleteConfirmationOpen}
             onClose={() => setDeleteConfirmationOpen(false)}
@@ -771,73 +880,8 @@ const ViewAgent = () => {
                 </Button>
             </DialogActions>
         </Dialog> 
-        <Dialog
-            open={regenerateDialogOpen}
-            onClose={() => setRegenerateDialogOpen(false)}
-        >
-            <DialogTitle>Regenerate Agent Code</DialogTitle>
-            <DialogContent>
-                <DialogContentText sx={{ mb: 2 }}>
-                    Select which model to use for code generation. The code will be regenerated based on the current description.
-                </DialogContentText>
-                <FormControl fullWidth sx={{ mt: 1 }}>
-                    <InputLabel>Composer Model</InputLabel>
-                    <Select
-                        value={selectedComposerModel ? `${selectedComposerModel.provider}/${selectedComposerModel.model}` : ''}
-                        label="Composer Model"
-                        onChange={(e) => {
-                            const [provider, ...modelParts] = e.target.value.split('/');
-                            const model = modelParts.join('/'); // Handle models with / in name
-                            // Check if it's the stored composer config
-                            if (agent?.composerModelConfig && 
-                                agent.composerModelConfig.provider === provider && 
-                                agent.composerModelConfig.model === model) {
-                                setSelectedComposerModel(agent.composerModelConfig);
-                            } else {
-                                // Find from invokable models
-                                const selected = agent?.invokableModels?.find(m => m.provider === provider && m.model === model);
-                                if (selected) {
-                                    setSelectedComposerModel(selected);
-                                } else {
-                                    setSelectedComposerModel({ provider, model, parameters: {} });
-                                }
-                            }
-                        }}
-                    >
-                        {agent?.composerModelConfig && (
-                            <MenuItem value={`${agent.composerModelConfig.provider}/${agent.composerModelConfig.model}`}>
-                                {agent.composerModelConfig.provider}/{agent.composerModelConfig.model} (stored composer)
-                            </MenuItem>
-                        )}
-                        {agent?.invokableModels?.filter(m => 
-                            !agent?.composerModelConfig || 
-                            m.provider !== agent.composerModelConfig.provider || 
-                            m.model !== agent.composerModelConfig.model
-                        ).map((m, idx) => (
-                            <MenuItem key={idx} value={`${m.provider}/${m.model}`}>
-                                {m.provider}/{m.model}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-                {(!agent?.invokableModels?.length && !agent?.composerModelConfig) && (
-                    <Alert severity="warning" sx={{ mt: 2 }}>No models configured for this agent. Please add a model first.</Alert>
-                )}
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setRegenerateDialogOpen(false)}>Cancel</Button>
-                <Button 
-                    onClick={handleRegenerateCode} 
-                    color="primary" 
-                    variant="contained"
-                    disabled={!selectedComposerModel}
-                >
-                    Regenerate
-                </Button>
-            </DialogActions>
-        </Dialog>
 
-        {/* Model Selection Dialog - using ModelConfigDialog for full parameter support */}
+        {/* Model Config Dialog */}
         <ModelConfigDialog
             open={modelDialogOpen}
             onClose={() => setModelDialogOpen(false)}

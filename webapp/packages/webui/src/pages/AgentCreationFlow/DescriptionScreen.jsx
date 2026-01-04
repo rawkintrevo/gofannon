@@ -8,7 +8,7 @@ const DescriptionScreen = () => {
   const navigate = useNavigate();
 
   const handleContinue = () => {
-    navigate('/create-agent/schemas');
+    navigate('/create-agent/code');
   };
 
   return (
