@@ -54,10 +54,13 @@ async def call_llm(
     thoughts = None
     content = ""
 
+    # Filter out None values from parameters (e.g., top_p with default None)
+    filtered_params = {k: v for k, v in parameters.items() if v is not None}
+
     kwargs = {
         "model": model_string,
         "messages": messages,
-        **parameters,
+        **filtered_params,
     }
 
     reasoning_effort = kwargs.pop('reasoning_effort', 'disable')
@@ -95,10 +98,30 @@ async def call_llm(
                 kwargs["instructions"] = "\n\n".join(system_prompts)
 
             # Note: The 'input' for aresponses is the last user message. Conversation history is not directly supported.
-            input_text = next((msg["content"] for msg in reversed(other_messages) if msg["role"] == "user"), "")
+            input_text = ""
+            for msg in reversed(other_messages):
+                if msg.get("role") == "user":
+                    content = msg.get("content", "")
+                    if isinstance(content, str):
+                        input_text = content
+                    elif isinstance(content, list):
+                        # Handle list-format content (e.g., multimodal)
+                        input_text = " ".join(
+                            item.get("text", "") for item in content 
+                            if isinstance(item, dict) and item.get("type") == "text"
+                        )
+                    break
             
             if not input_text:
-                raise ValueError("No user message content found for Responses API call")
+                # Fall back to standard completion if no user input found
+                kwargs['messages'] = messages
+                if reasoning_effort != 'disable':
+                    kwargs['reasoning_effort'] = reasoning_effort
+                    kwargs.pop('reasoning', None)
+                response = await litellm.acompletion(**kwargs)
+                message = response.choices[0].message
+                content = message.content if isinstance(message.content, str) else ""
+                return content, None
             
             response_obj = await litellm.aresponses(input=input_text, **kwargs)
             
@@ -128,14 +151,23 @@ async def call_llm(
                 raise Exception("Polling for OpenAI Responses API timed out.")
 
         except Exception as e:
+            import traceback
             print(f"Error using litellm.aresponses: {e}")
+            print(f"Full traceback:\n{traceback.format_exc()}")
             raise
     else:
         # Standard acompletion call for most models
         if reasoning_effort != 'disable':
             kwargs['reasoning_effort'] = reasoning_effort
 
-        response = await litellm.acompletion(**kwargs)
+        try:
+            response = await litellm.acompletion(**kwargs)
+        except Exception as e:
+            import traceback
+            print(f"Error using litellm.acompletion: {e}")
+            print(f"Full traceback:\n{traceback.format_exc()}")
+            print(f"Request kwargs (excluding messages): model={kwargs.get('model')}, tools={kwargs.get('tools')}")
+            raise
         message = response.choices[0].message
         content = message.content if isinstance(message.content, str) else ""
         

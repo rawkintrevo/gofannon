@@ -46,6 +46,7 @@ import agentService from '../services/agentService';
 import chatService from '../services/chatService';
 import CodeEditor from '../components/CodeEditor';
 import SpecViewerModal from '../components/SpecViewerModal';
+import ModelConfigDialog from '../components/ModelConfigDialog';
 import CodeIcon from '@mui/icons-material/Code';
 import AddIcon from '@mui/icons-material/Add';
 
@@ -76,7 +77,9 @@ const ViewAgent = () => {
   const [modelDialogMode, setModelDialogMode] = useState('invokable'); // 'invokable' or 'composer'
   const [dialogProvider, setDialogProvider] = useState('');
   const [dialogModel, setDialogModel] = useState('');
+  const [dialogParamSchema, setDialogParamSchema] = useState({});
   const [dialogParams, setDialogParams] = useState({});
+  const [dialogBuiltInTool, setDialogBuiltInTool] = useState('');
 
   const isCreationFlow = !agentId;
 
@@ -142,6 +145,7 @@ const ViewAgent = () => {
           inputSchema: agentFlowContext.inputSchema,
           outputSchema: agentFlowContext.outputSchema,
           invokableModels: agentFlowContext.invokableModels,
+          composerModelConfig: agentFlowContext.composerModelConfig,
           docstring: agentFlowContext.docstring,
           friendlyName: agentFlowContext.friendlyName,
         });
@@ -192,6 +196,7 @@ const ViewAgent = () => {
       agentFlowContext.setInputSchema(agent.inputSchema);
       agentFlowContext.setOutputSchema(agent.outputSchema);
       agentFlowContext.setInvokableModels(agent.invokableModels);
+      agentFlowContext.setComposerModelConfig(agent.composerModelConfig);
       agentFlowContext.setDocstring(agent.docstring);
       agentFlowContext.setGofannonAgents(agent.gofannonAgents);
       agentFlowContext.setFriendlyName(agent.friendlyName);
@@ -254,6 +259,10 @@ const ViewAgent = () => {
 
   const handleRegenerateCode = async () => {
     if (!agent || !selectedComposerModel) return;
+    if (!agent.description || agent.description.trim() === '') {
+      setError('Description is required to generate code. Please add a description first.');
+      return;
+    }
     setRegenerateDialogOpen(false);
     setError(null);
     setSaveSuccess(false);
@@ -267,6 +276,7 @@ const ViewAgent = () => {
         invokableModels: agent.invokableModels || [],
         swaggerSpecs: agent.swaggerSpecs || [],
         gofannonAgents: (agent.gofannonAgents || []).map(ga => typeof ga === 'string' ? ga : ga.id),
+        builtInTools: selectedComposerModel.builtInTool ? [selectedComposerModel.builtInTool] : [],
         modelConfig: {
           provider: selectedComposerModel.provider,
           model: selectedComposerModel.model,
@@ -286,6 +296,7 @@ const ViewAgent = () => {
           provider: selectedComposerModel.provider,
           model: selectedComposerModel.model,
           parameters: selectedComposerModel.parameters || {},
+          builtInTool: selectedComposerModel.builtInTool || null,
         },
       }));
       
@@ -310,20 +321,40 @@ const ViewAgent = () => {
   // Model management functions
   const openModelDialog = (mode) => {
     setModelDialogMode(mode);
-    // Reset dialog state
+    // Reset dialog state with defaults
     const defaultProvider = Object.keys(providers)[0] || '';
     setDialogProvider(defaultProvider);
     const models = Object.keys(providers[defaultProvider]?.models || {});
-    setDialogModel(models[0] || '');
-    setDialogParams({});
+    const defaultModel = models[0] || '';
+    setDialogModel(defaultModel);
+    // Initialize param schema and defaults
+    const modelParams = providers[defaultProvider]?.models?.[defaultModel]?.parameters || {};
+    setDialogParamSchema(modelParams);
+    // Only set params with non-null defaults
+    // For Anthropic, skip top_p (use temperature by default) since they're mutually exclusive
+    const defaultParams = {};
+    Object.keys(modelParams).forEach(key => {
+      if (modelParams[key].default !== null) {
+        // Skip top_p for Anthropic - use temperature by default
+        if (key === 'top_p' && defaultProvider === 'anthropic') {
+          return;
+        }
+        defaultParams[key] = modelParams[key].default;
+      }
+    });
+    setDialogParams(defaultParams);
+    setDialogBuiltInTool('');
     setModelDialogOpen(true);
   };
 
-  const handleProviderChange = (provider) => {
+  // This function is not used directly - ModelConfigDialog handles provider/model changes internally
+  // But we need it for the props interface
+  const handleDialogProviderChange = (provider) => {
     setDialogProvider(provider);
-    const models = Object.keys(providers[provider]?.models || {});
-    setDialogModel(models[0] || '');
-    setDialogParams({});
+  };
+
+  const handleDialogModelChange = (model) => {
+    setDialogModel(model);
   };
 
   const handleAddInvokableModel = () => {
@@ -332,6 +363,7 @@ const ViewAgent = () => {
       provider: dialogProvider,
       model: dialogModel,
       parameters: dialogParams,
+      builtInTool: dialogBuiltInTool || null,
     };
     setAgent(prev => ({
       ...prev,
@@ -353,6 +385,7 @@ const ViewAgent = () => {
       provider: dialogProvider,
       model: dialogModel,
       parameters: dialogParams,
+      builtInTool: dialogBuiltInTool || null,
     };
     setAgent(prev => ({
       ...prev,
@@ -540,12 +573,20 @@ const ViewAgent = () => {
                         The model used to generate agent code when you click "Regenerate Code".
                     </Typography>
                     {agent.composerModelConfig ? (
-                        <Chip 
-                            label={`${agent.composerModelConfig.provider}/${agent.composerModelConfig.model}`} 
-                            color="primary" 
-                            sx={{ mr: 1, mt: 1 }}
-                            onDelete={() => setAgent(prev => ({ ...prev, composerModelConfig: null }))}
-                        />
+                        (() => {
+                            const paramStr = Object.entries(agent.composerModelConfig.parameters || {})
+                                .map(([k, v]) => `${k}: ${v}`)
+                                .join(', ');
+                            const toolStr = agent.composerModelConfig.builtInTool ? ` + ${agent.composerModelConfig.builtInTool}` : '';
+                            return (
+                                <Chip 
+                                    label={`${agent.composerModelConfig.provider}/${agent.composerModelConfig.model}${toolStr}${paramStr ? ` (${paramStr})` : ''}`} 
+                                    color="primary" 
+                                    sx={{ mr: 1, mt: 1 }}
+                                    onDelete={() => setAgent(prev => ({ ...prev, composerModelConfig: null }))}
+                                />
+                            );
+                        })()
                     ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
                             No composer model configured. Will use first invokable model.
@@ -572,14 +613,20 @@ const ViewAgent = () => {
                     </Typography>
                     {agent.invokableModels && agent.invokableModels.length > 0 ? (
                         <Box sx={{ mt: 1 }}>
-                            {agent.invokableModels.map((m, idx) => (
-                                <Chip 
-                                    key={idx}
-                                    label={`${m.provider}/${m.model}`} 
-                                    sx={{ mr: 1, mb: 1 }}
-                                    onDelete={() => handleRemoveInvokableModel(idx)}
-                                />
-                            ))}
+                            {agent.invokableModels.map((m, idx) => {
+                                const paramStr = Object.entries(m.parameters || {})
+                                    .map(([k, v]) => `${k}: ${v}`)
+                                    .join(', ');
+                                const toolStr = m.builtInTool ? ` + ${m.builtInTool}` : '';
+                                return (
+                                    <Chip 
+                                        key={idx}
+                                        label={`${m.provider}/${m.model}${toolStr}${paramStr ? ` (${paramStr})` : ''}`} 
+                                        sx={{ mr: 1, mb: 1 }}
+                                        onDelete={() => handleRemoveInvokableModel(idx)}
+                                    />
+                                );
+                            })}
                         </Box>
                     ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
@@ -790,67 +837,26 @@ const ViewAgent = () => {
             </DialogActions>
         </Dialog>
 
-        {/* Model Selection Dialog */}
-        <Dialog
+        {/* Model Selection Dialog - using ModelConfigDialog for full parameter support */}
+        <ModelConfigDialog
             open={modelDialogOpen}
             onClose={() => setModelDialogOpen(false)}
-            maxWidth="sm"
-            fullWidth
-        >
-            <DialogTitle>
-                {modelDialogMode === 'composer' ? 'Set Composer Model' : 'Add Invokable Model'}
-            </DialogTitle>
-            <DialogContent>
-                <DialogContentText sx={{ mb: 2 }}>
-                    {modelDialogMode === 'composer' 
-                        ? 'Select the model to use for code generation.'
-                        : 'Select a model the agent can call at runtime.'}
-                </DialogContentText>
-                {loadingProviders ? (
-                    <CircularProgress />
-                ) : Object.keys(providers).length === 0 ? (
-                    <Alert severity="warning">No providers available. Check your API keys.</Alert>
-                ) : (
-                    <>
-                        <FormControl fullWidth sx={{ mt: 1, mb: 2 }}>
-                            <InputLabel>Provider</InputLabel>
-                            <Select
-                                value={dialogProvider}
-                                label="Provider"
-                                onChange={(e) => handleProviderChange(e.target.value)}
-                            >
-                                {Object.keys(providers).map(p => (
-                                    <MenuItem key={p} value={p}>{p}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        <FormControl fullWidth sx={{ mb: 2 }}>
-                            <InputLabel>Model</InputLabel>
-                            <Select
-                                value={dialogModel}
-                                label="Model"
-                                onChange={(e) => setDialogModel(e.target.value)}
-                            >
-                                {Object.keys(providers[dialogProvider]?.models || {}).map(m => (
-                                    <MenuItem key={m} value={m}>{m}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </>
-                )}
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setModelDialogOpen(false)}>Cancel</Button>
-                <Button 
-                    onClick={modelDialogMode === 'composer' ? handleSetComposerModel : handleAddInvokableModel}
-                    color="primary" 
-                    variant="contained"
-                    disabled={!dialogProvider || !dialogModel}
-                >
-                    {modelDialogMode === 'composer' ? 'Set Model' : 'Add Model'}
-                </Button>
-            </DialogActions>
-        </Dialog>
+            onSave={modelDialogMode === 'composer' ? handleSetComposerModel : handleAddInvokableModel}
+            title={modelDialogMode === 'composer' ? 'Set Composer Model' : 'Add Invokable Model'}
+            providers={providers}
+            selectedProvider={dialogProvider}
+            setSelectedProvider={handleDialogProviderChange}
+            selectedModel={dialogModel}
+            setSelectedModel={handleDialogModelChange}
+            modelParamSchema={dialogParamSchema}
+            setModelParamSchema={setDialogParamSchema}
+            currentModelParams={dialogParams}
+            setCurrentModelParams={setDialogParams}
+            selectedBuiltInTool={dialogBuiltInTool}
+            setSelectedBuiltInTool={setDialogBuiltInTool}
+            loadingProviders={loadingProviders}
+            providersError={null}
+        />
 
         <SpecViewerModal
             open={viewingSpec.open}

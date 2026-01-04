@@ -17,7 +17,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5.2-2025-12-11": {
@@ -32,7 +32,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5.2-pro": {
@@ -47,7 +47,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5.2-pro-2025-12-11": {
@@ -62,7 +62,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
 
@@ -81,7 +81,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5.1-2025-11-13": {
@@ -96,7 +96,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5.1-codex": {
@@ -139,7 +139,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-2025-08-07": {
@@ -154,7 +154,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-pro": {
@@ -169,7 +169,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-pro-2025-10-06": {
@@ -184,7 +184,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-mini": {
@@ -199,7 +199,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-mini-2025-08-07": {
@@ -214,7 +214,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-nano": {
@@ -222,7 +222,7 @@ models = {
         "returns_thoughts": False,
         "parameters": {},
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-nano-2025-08-07": {
@@ -230,7 +230,7 @@ models = {
         "returns_thoughts": False,
         "parameters": {},
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-codex": {
@@ -246,7 +246,7 @@ models = {
         "returns_thoughts": False,
         "parameters": {},
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-5-search-api-2025-10-14": {
@@ -254,7 +254,7 @@ models = {
         "returns_thoughts": False,
         "parameters": {},
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
 
@@ -326,7 +326,7 @@ models = {
             }
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "o3-2025-04-16": {
@@ -342,7 +342,7 @@ models = {
             }
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "o3-mini": {
@@ -358,7 +358,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "o3-mini-2025-01-31": {
@@ -374,7 +374,7 @@ models = {
             },
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "o4-mini": {
@@ -390,7 +390,7 @@ models = {
             }
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "o4-mini-2025-04-16": {
@@ -406,7 +406,7 @@ models = {
             }
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
 
@@ -420,7 +420,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4.1-2025-04-14": {
@@ -430,7 +430,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4.1-mini": {
@@ -440,7 +440,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4.1-mini-2025-04-14": {
@@ -450,7 +450,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4.1-nano": {
@@ -460,7 +460,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4.1-nano-2025-04-14": {
@@ -470,7 +470,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
 
@@ -484,7 +484,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-2024-11-20": {
@@ -494,7 +494,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-2024-08-06": {
@@ -504,7 +504,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-2024-05-13": {
@@ -514,7 +514,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "chatgpt-4o-latest": {
@@ -524,7 +524,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-mini": {
@@ -534,7 +534,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-mini-2024-07-18": {
@@ -544,7 +544,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
 
@@ -558,7 +558,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-search-preview-2025-03-11": {
@@ -568,7 +568,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-mini-search-preview": {
@@ -578,7 +578,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
     "gpt-4o-mini-search-preview-2025-03-11": {
@@ -588,7 +588,7 @@ models = {
             "temperature": {"type": "float", "default": 0.7, "min": 0.0, "max": 2.0},
         },
         "built_in_tools": [
-            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "auto"}},
+            {"id": "web_search", "description": "Performs a web search.", "tool_config": {"type": "web_search", "search_context_size": "medium"}},
         ]
     },
 

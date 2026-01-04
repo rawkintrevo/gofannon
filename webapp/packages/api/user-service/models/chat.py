@@ -37,6 +37,8 @@ class ProviderConfig(BaseModel):
     provider: str
     model: str
     parameters: Dict[str, Any]
+    built_in_tool: Optional[str] = Field(None, alias="builtInTool")
+    model_config = ConfigDict(populate_by_name=True)
 
 class SessionData(BaseModel):
     session_id: str

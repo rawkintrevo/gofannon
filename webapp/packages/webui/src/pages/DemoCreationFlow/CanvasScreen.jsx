@@ -218,7 +218,7 @@ const CanvasScreen = () => {
         modelConfig,
       });
       setGeneratedCode(code);
-      setGenerationThoughts(response.thoughts);
+      setGenerationThoughts(code.thoughts);
       setActiveTab('canvas'); // Switch to canvas view after generation
     } catch (err) {
       setError(err.message || "Failed to generate code.");

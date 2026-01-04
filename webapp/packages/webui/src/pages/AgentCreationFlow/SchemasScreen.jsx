@@ -8,17 +8,12 @@ import {
   Grid,
   Divider,
   Alert,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
   Chip,
   CircularProgress
 } from '@mui/material';
 import CodeIcon from '@mui/icons-material/Code';
 import SettingsIcon from '@mui/icons-material/Settings'; 
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { useAgentFlow } from './AgentCreationFlowContext';
 import chatService from '../../services/chatService'; // Re-use chatService to fetch providers
 import agentService from '../../services/agentService'; // Import the new agent service
@@ -66,6 +61,7 @@ const SchemasScreen = () => {
   const [currentInvokableModel, setCurrentInvokableModel] = useState('');
   const [currentInvokableSchema, setCurrentInvokableSchema] = useState({});
   const [currentInvokableParams, setCurrentInvokableParams] = useState({});
+  const [currentInvokableBuiltInTool, setCurrentInvokableBuiltInTool] = useState('');
 
   // Fetch providers on component mount
   useEffect(() => {
@@ -88,9 +84,17 @@ const SchemasScreen = () => {
             const modelParams = providersData[defaultProvider].models[defaultModel].parameters;
             setModelParamSchema(modelParams);
   
+            // Only set params with non-null defaults
+            // For Anthropic, skip top_p (use temperature by default) since they're mutually exclusive
             const defaultParams = {};
             Object.keys(modelParams).forEach(key => {
-              defaultParams[key] = modelParams[key].default;
+              if (modelParams[key].default !== null) {
+                // Skip top_p for Anthropic - use temperature by default
+                if (key === 'top_p' && defaultProvider === 'anthropic') {
+                  return;
+                }
+                defaultParams[key] = modelParams[key].default;
+              }
             });
             setCurrentModelParams(defaultParams);
           } else {
@@ -127,11 +131,11 @@ const SchemasScreen = () => {
       invokableModels,
       swaggerSpecs,
       gofannonAgents: gofannonAgents.map(agent => agent.id),
+      builtInTools: composerBuiltInTool ? [composerBuiltInTool] : [],
       modelConfig: {
         provider: selectedProvider,
         model: selectedModel,
         parameters: currentModelParams,
-        builtInTool: composerBuiltInTool,
       },
     };
     
@@ -145,6 +149,7 @@ const SchemasScreen = () => {
         provider: selectedProvider,
         model: selectedModel,
         parameters: currentModelParams,
+        builtInTool: composerBuiltInTool || null,
       });
       navigate('/create-agent/code');
     } catch (err) {
@@ -159,6 +164,7 @@ const SchemasScreen = () => {
         provider: currentInvokableProvider,
         model: currentInvokableModel,
         parameters: currentInvokableParams,
+        builtInTool: currentInvokableBuiltInTool || null,
     };
     setInvokableModels(prev => [...prev, newModel]);
     setInvokableModelDialogOpen(false);
@@ -168,10 +174,32 @@ const SchemasScreen = () => {
     setInvokableModels(invokableModels.filter((_, i) => i !== index));
   };
 
+  const handleSaveComposerModel = () => {
+    // State is already updated via props, just close the dialog
+    setModelConfigDialogOpen(false);
+  };
+
   const openAddModelDialog = () => {
     // Reset to defaults before opening
     setCurrentInvokableProvider(selectedProvider);
     setCurrentInvokableModel(selectedModel);
+    // Initialize schema and params for the selected model
+    const modelParams = providers[selectedProvider]?.models?.[selectedModel]?.parameters || {};
+    setCurrentInvokableSchema(modelParams);
+    // Only set params with non-null defaults
+    // For Anthropic, skip top_p (use temperature by default) since they're mutually exclusive
+    const defaultParams = {};
+    Object.keys(modelParams).forEach(key => {
+      if (modelParams[key].default !== null) {
+        // Skip top_p for Anthropic - use temperature by default
+        if (key === 'top_p' && selectedProvider === 'anthropic') {
+          return;
+        }
+        defaultParams[key] = modelParams[key].default;
+      }
+    });
+    setCurrentInvokableParams(defaultParams);
+    setCurrentInvokableBuiltInTool('');
     setInvokableModelDialogOpen(true);
   };
   
@@ -234,27 +262,23 @@ const SchemasScreen = () => {
           No invokable models added. The agent will not be able to call other LLMs.
         </Typography>
       ) : (
-        <List dense sx={{ mb: 3, border: '1px solid #ddd', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
-          {invokableModels.map((model, index) => (
-            <ListItem
-              key={index}
-              secondaryAction={
-                <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteInvokableModel(index)}>
-                  <DeleteIcon />
-                </IconButton>
-              }
-            >
-              <ListItemText
-                primary={`${model.provider}/${model.model}`}
-                secondary={
-                  Object.keys(model.parameters).length > 0
-                    ? `Params: ${Object.keys(model.parameters).join(', ')}`
-                    : 'Default parameters'
-                }
+        <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {invokableModels.map((model, index) => {
+            const paramStr = Object.entries(model.parameters || {})
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ');
+            const toolStr = model.builtInTool ? ` + ${model.builtInTool}` : '';
+            return (
+              <Chip
+                key={index}
+                label={`${model.provider}/${model.model}${toolStr}${paramStr ? ` (${paramStr})` : ''}`}
+                onDelete={() => handleDeleteInvokableModel(index)}
+                color="primary"
+                variant="outlined"
               />
-            </ListItem>
-          ))}
-        </List>
+            );
+          })}
+        </Box>
       )}
 
       <Divider sx={{ my: 3 }} />
@@ -266,7 +290,7 @@ const SchemasScreen = () => {
             <CircularProgress size={20} />
           ) : isModelSelected ? (
             <Chip 
-              label={`${selectedProvider}/${selectedModel}`}
+              label={`${selectedProvider}/${selectedModel}${composerBuiltInTool ? ` + ${composerBuiltInTool}` : ''}${Object.keys(currentModelParams).length > 0 ? ` (${Object.entries(currentModelParams).map(([k,v]) => `${k}: ${v}`).join(', ')})` : ''}`}
               color="secondary" 
               variant="outlined"
             />
@@ -309,6 +333,8 @@ const SchemasScreen = () => {
         setModelParamSchema={setCurrentInvokableSchema}
         currentModelParams={currentInvokableParams}
         setCurrentModelParams={setCurrentInvokableParams}
+        selectedBuiltInTool={currentInvokableBuiltInTool}
+        setSelectedBuiltInTool={setCurrentInvokableBuiltInTool}
         loadingProviders={loadingProviders}
         providersError={providersError}
       />
@@ -316,6 +342,7 @@ const SchemasScreen = () => {
       <ModelConfigDialog
         open={modelConfigDialogOpen}
         onClose={() => setModelConfigDialogOpen(false)}
+        onSave={handleSaveComposerModel}
         title="Configure Agent Code Generation Model"
         providers={providers}
         selectedProvider={selectedProvider}
