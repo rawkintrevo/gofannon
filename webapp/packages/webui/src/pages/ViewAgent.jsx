@@ -25,6 +25,12 @@ import {
   DialogTitle,
   Grid,
   Divider,
+  Tabs,
+  Tab,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -39,6 +45,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CodeIcon from '@mui/icons-material/Code';
 import AddIcon from '@mui/icons-material/Add';
+import BuildIcon from '@mui/icons-material/Build';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 import { useAgentFlow } from './AgentCreationFlow/AgentCreationFlowContext';
 import agentService from '../services/agentService';
@@ -47,6 +55,7 @@ import CodeEditor from '../components/CodeEditor';
 import SpecViewerModal from '../components/SpecViewerModal';
 import ModelConfigDialog from '../components/ModelConfigDialog';
 import SchemaEditor from '../components/SchemaEditor';
+import ToolsSelectionDialog from './AgentCreationFlow/ToolsSelectionDialog';
 
 const ViewAgent = () => {
   const { agentId } = useParams();
@@ -70,24 +79,36 @@ const ViewAgent = () => {
   const [providers, setProviders] = useState({});
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
-  const [modelDialogMode, setModelDialogMode] = useState('invokable'); // 'invokable' or 'composer'
+  const [modelDialogMode, setModelDialogMode] = useState('invokable');
   const [dialogProvider, setDialogProvider] = useState('');
   const [dialogModel, setDialogModel] = useState('');
   const [dialogParamSchema, setDialogParamSchema] = useState({});
   const [dialogParams, setDialogParams] = useState({});
   const [dialogBuiltInTool, setDialogBuiltInTool] = useState('');
 
+  // State for tools management
+  const [toolsTabIndex, setToolsTabIndex] = useState(0);
+  const [currentToolUrl, setCurrentToolUrl] = useState('');
+  const [toolsDialog, setToolsDialog] = useState({ open: false, mcpUrl: '', existingSelectedTools: [] });
+  const [specUrl, setSpecUrl] = useState('');
+  const [isFetchingSpec, setIsFetchingSpec] = useState(false);
+  const [availableAgents, setAvailableAgents] = useState([]);
+  const [loadingAgents, setLoadingAgents] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+
   const isCreationFlow = !agentId;
   const hasCode = agent?.code && agent.code.trim() !== '';
 
+  // Track if initial load has been done for creation flow
+  const initialLoadDone = React.useRef(false);
+
   useEffect(() => {
-    if (agentId) { // Only for existing agents, not during creation flow
+    if (agentId) {
         const fetchDeploymentStatus = async () => {
             try {
                 const status = await agentService.getDeployment(agentId);
                 setDeployment(status);
             } catch (err) {
-                // Don't block the page from rendering, just show an auxiliary error
                 const deploymentError = 'Could not fetch deployment status.';
                 setError(prev => prev ? `${prev}\n${deploymentError}` : deploymentError);
             }
@@ -103,7 +124,6 @@ const ViewAgent = () => {
       try {
         const providersData = await chatService.getProviders();
         setProviders(providersData);
-        // Set default provider if available
         const defaultProvider = Object.keys(providersData)[0];
         if (defaultProvider) {
           setDialogProvider(defaultProvider);
@@ -121,11 +141,27 @@ const ViewAgent = () => {
     fetchProviders();
   }, []);
 
-  // Track if initial load has been done for creation flow
-  const initialLoadDone = React.useRef(false);
+  // Fetch available agents when Gofannon tab is selected
+  useEffect(() => {
+    const fetchAgents = async () => {
+      setLoadingAgents(true);
+      try {
+        const agents = await agentService.getAgents();
+        // Filter out current agent if editing
+        const filtered = agentId ? agents.filter(a => a._id !== agentId) : agents;
+        setAvailableAgents(filtered);
+      } catch (err) {
+        console.error('Failed to load available agents:', err);
+      } finally {
+        setLoadingAgents(false);
+      }
+    };
+    if (toolsTabIndex === 2) {
+      fetchAgents();
+    }
+  }, [toolsTabIndex, agentId]);
 
   const loadAgentData = useCallback(async () => {
-    // For creation flow, only load from context once on initial mount
     if (isCreationFlow && initialLoadDone.current) {
       return;
     }
@@ -135,30 +171,26 @@ const ViewAgent = () => {
     
     try {
       if (isCreationFlow) {
-        // In creation flow, data comes from context
-        // Code may or may not exist yet
         setAgent({
           name: agentFlowContext.friendlyName || '',
-          description: agentFlowContext.description,
-          tools: agentFlowContext.tools,
-          swaggerSpecs: agentFlowContext.swaggerSpecs,
-          gofannonAgents: agentFlowContext.gofannonAgents,
+          description: agentFlowContext.description || '',
+          tools: agentFlowContext.tools || {},
+          swaggerSpecs: agentFlowContext.swaggerSpecs || [],
+          gofannonAgents: agentFlowContext.gofannonAgents || [],
           code: agentFlowContext.generatedCode || '',
-          inputSchema: agentFlowContext.inputSchema,
-          outputSchema: agentFlowContext.outputSchema,
-          invokableModels: agentFlowContext.invokableModels,
+          inputSchema: agentFlowContext.inputSchema || { inputText: "string" },
+          outputSchema: agentFlowContext.outputSchema || { outputText: "string" },
+          invokableModels: agentFlowContext.invokableModels || [],
           composerModelConfig: agentFlowContext.composerModelConfig,
-          docstring: agentFlowContext.docstring,
-          friendlyName: agentFlowContext.friendlyName,
+          docstring: agentFlowContext.docstring || '',
+          friendlyName: agentFlowContext.friendlyName || '',
         });
         initialLoadDone.current = true;
 
       } else {
-        // In view/edit mode, fetch from API
         const data = await agentService.getAgent(agentId);
         
         if (data.gofannonAgents && data.gofannonAgents.length > 0) {
-            // To display names, we need to fetch all agents and create a map.
             const allAgents = await agentService.getAgents();
             const agentMap = new Map(allAgents.map(a => [a._id, a.name]));
             data.gofannonAgents = data.gofannonAgents.map(id => ({
@@ -175,33 +207,33 @@ const ViewAgent = () => {
       setLoading(false);
     }
   }, [agentId, isCreationFlow]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Note: agentFlowContext intentionally excluded - we only load from context once on mount
 
   useEffect(() => {
     loadAgentData();
   }, [loadAgentData]);
 
-  const updateContextAndNavigate = (path) => {
-      // Update the context with the current agent state before navigating
-      agentFlowContext.setDescription(agent.description);
-      agentFlowContext.setGeneratedCode(agent.code);
-      agentFlowContext.setTools(agent.tools);
-      agentFlowContext.setSwaggerSpecs(agent.swaggerSpecs);
-      agentFlowContext.setInputSchema(agent.inputSchema);
-      agentFlowContext.setOutputSchema(agent.outputSchema);
-      agentFlowContext.setInvokableModels(agent.invokableModels);
-      agentFlowContext.setComposerModelConfig(agent.composerModelConfig);
-      agentFlowContext.setDocstring(agent.docstring);
-      agentFlowContext.setGofannonAgents(agent.gofannonAgents);
-      agentFlowContext.setFriendlyName(agent.friendlyName);
-      navigate(path);
-  };
+  // Sync helper for creation flow
+  const syncToContext = useCallback((field, value) => {
+    if (!isCreationFlow) return;
+    switch (field) {
+      case 'description': agentFlowContext.setDescription(value); break;
+      case 'code': agentFlowContext.setGeneratedCode(value); break;
+      case 'tools': agentFlowContext.setTools(value); break;
+      case 'swaggerSpecs': agentFlowContext.setSwaggerSpecs(value); break;
+      case 'gofannonAgents': agentFlowContext.setGofannonAgents(value); break;
+      case 'inputSchema': agentFlowContext.setInputSchema(value); break;
+      case 'outputSchema': agentFlowContext.setOutputSchema(value); break;
+      case 'invokableModels': agentFlowContext.setInvokableModels(value); break;
+      case 'composerModelConfig': agentFlowContext.setComposerModelConfig(value); break;
+      default: break;
+    }
+  }, [isCreationFlow, agentFlowContext]);
 
   const handleRunInSandbox = () => {
     if (agentId) {
-      updateContextAndNavigate(`/agent/${agentId}/sandbox`);
+      navigate(`/agent/${agentId}/sandbox`);
     } else {
-      updateContextAndNavigate('/create-agent/sandbox');
+      navigate('/create-agent/sandbox');
     }
   };
 
@@ -209,12 +241,8 @@ const ViewAgent = () => {
     if (agentId) {
       navigate(`/agent/${agentId}/deploy`);
     } else {
-      updateContextAndNavigate('/create-agent/deploy');
+      navigate('/create-agent/deploy');
     }
-  };
-
-  const handleEditTools = () => {
-    updateContextAndNavigate('/create-agent/tools');
   };
 
   const handleUpdateAgent = async () => {
@@ -287,7 +315,6 @@ const ViewAgent = () => {
         name: response.friendlyName,
       }));
 
-      // Also update context if in creation flow
       if (isCreationFlow) {
         agentFlowContext.setGeneratedCode(response.code);
         agentFlowContext.setDocstring(response.docstring);
@@ -305,21 +332,133 @@ const ViewAgent = () => {
   const handleFieldChange = (field, value) => {
     setAgent((prev) => ({ ...prev, [field]: value }));
     setSaveSuccess(false);
-    // Sync to context in creation flow
-    if (isCreationFlow) {
-      if (field === 'description') {
-        agentFlowContext.setDescription(value);
-      } else if (field === 'code') {
-        agentFlowContext.setGeneratedCode(value);
-      }
-    }
+    syncToContext(field, value);
   };
 
   const handleViewSpec = (spec) => {
     setViewingSpec({ open: true, name: spec.name, content: spec.content });
   };
 
-  // Model Dialog functions
+  // ========== Tools Management ==========
+  const handleAddMcpServer = () => {
+    if (!currentToolUrl.trim()) {
+      setError('Tool URL cannot be empty.');
+      return;
+    }
+    try {
+      new URL(currentToolUrl);
+    } catch (e) {
+      setError('Invalid URL format.');
+      return;
+    }
+
+    if (agent.tools[currentToolUrl]) {
+      setError('This URL is already added.');
+      return;
+    }
+
+    const newTools = { ...agent.tools, [currentToolUrl]: [] };
+    setAgent(prev => ({ ...prev, tools: newTools }));
+    syncToContext('tools', newTools);
+    setCurrentToolUrl('');
+    setError(null);
+  };
+
+  const handleDeleteMcpServer = (urlToDelete) => {
+    const newTools = { ...agent.tools };
+    delete newTools[urlToDelete];
+    setAgent(prev => ({ ...prev, tools: newTools }));
+    syncToContext('tools', newTools);
+  };
+
+  const handleOpenToolsDialog = (mcpUrl) => {
+    setToolsDialog({
+      open: true,
+      mcpUrl: mcpUrl,
+      existingSelectedTools: agent.tools[mcpUrl] || [],
+    });
+  };
+
+  const handleSaveSelectedTools = (mcpUrl, selectedNames) => {
+    const newTools = { ...agent.tools, [mcpUrl]: selectedNames };
+    setAgent(prev => ({ ...prev, tools: newTools }));
+    syncToContext('tools', newTools);
+  };
+
+  const handleFetchSpec = async () => {
+    if (!specUrl.trim()) {
+      setError('Spec URL cannot be empty.');
+      return;
+    }
+    setIsFetchingSpec(true);
+    setError(null);
+    try {
+      const specData = await agentService.fetchSpecFromUrl(specUrl);
+      if (agent.swaggerSpecs.some(spec => spec.name === specData.name)) {
+        setError(`A spec with the name "${specData.name}" already exists.`);
+      } else {
+        const newSpecs = [...agent.swaggerSpecs, specData];
+        setAgent(prev => ({ ...prev, swaggerSpecs: newSpecs }));
+        syncToContext('swaggerSpecs', newSpecs);
+        setSpecUrl('');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to fetch spec from URL.');
+    } finally {
+      setIsFetchingSpec(false);
+    }
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (agent.swaggerSpecs.some(spec => spec.name === file.name)) {
+        setError(`A spec with the name "${file.name}" has already been uploaded.`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        const newSpecs = [...agent.swaggerSpecs, { name: file.name, content }];
+        setAgent(prev => ({ ...prev, swaggerSpecs: newSpecs }));
+        syncToContext('swaggerSpecs', newSpecs);
+        setError(null);
+      };
+      reader.onerror = () => setError("Failed to read the file.");
+      reader.readAsText(file);
+    }
+    event.target.value = null;
+  };
+
+  const handleDeleteSpec = (specName) => {
+    const newSpecs = agent.swaggerSpecs.filter(spec => spec.name !== specName);
+    setAgent(prev => ({ ...prev, swaggerSpecs: newSpecs }));
+    syncToContext('swaggerSpecs', newSpecs);
+  };
+
+  const handleAddGofannonAgent = () => {
+    if (!selectedAgentId) return;
+    if (agent.gofannonAgents.some(a => a.id === selectedAgentId)) {
+      setError('This agent has already been added.');
+      return;
+    }
+    const agentToAdd = availableAgents.find(a => a._id === selectedAgentId);
+    if (agentToAdd) {
+      const newAgents = [...agent.gofannonAgents, { id: agentToAdd._id, name: agentToAdd.name }];
+      setAgent(prev => ({ ...prev, gofannonAgents: newAgents }));
+      syncToContext('gofannonAgents', newAgents);
+      setSelectedAgentId('');
+      setError(null);
+    }
+  };
+
+  const handleDeleteGofannonAgent = (agentIdToDelete) => {
+    const newAgents = agent.gofannonAgents.filter(a => a.id !== agentIdToDelete);
+    setAgent(prev => ({ ...prev, gofannonAgents: newAgents }));
+    syncToContext('gofannonAgents', newAgents);
+  };
+
+  // ========== Model Dialog Functions ==========
   const openModelDialog = (mode) => {
     setModelDialogMode(mode);
     const defaultProvider = Object.keys(providers)[0] || '';
@@ -328,7 +467,6 @@ const ViewAgent = () => {
     const defaultModel = models[0] || '';
     setDialogModel(defaultModel);
     
-    // Initialize param schema and default params
     const modelParams = providers[defaultProvider]?.models?.[defaultModel]?.parameters || {};
     setDialogParamSchema(modelParams);
     const defaultParams = {};
@@ -385,27 +523,15 @@ const ViewAgent = () => {
       builtInTool: dialogBuiltInTool || null,
     };
     const newInvokableModels = [...(agent.invokableModels || []), newModel];
-    setAgent(prev => ({
-      ...prev,
-      invokableModels: newInvokableModels,
-    }));
-    // Sync to context in creation flow
-    if (isCreationFlow) {
-      agentFlowContext.setInvokableModels(newInvokableModels);
-    }
+    setAgent(prev => ({ ...prev, invokableModels: newInvokableModels }));
+    syncToContext('invokableModels', newInvokableModels);
     setModelDialogOpen(false);
   };
 
   const handleRemoveInvokableModel = (index) => {
     const newInvokableModels = agent.invokableModels.filter((_, i) => i !== index);
-    setAgent(prev => ({
-      ...prev,
-      invokableModels: newInvokableModels,
-    }));
-    // Sync to context in creation flow
-    if (isCreationFlow) {
-      agentFlowContext.setInvokableModels(newInvokableModels);
-    }
+    setAgent(prev => ({ ...prev, invokableModels: newInvokableModels }));
+    syncToContext('invokableModels', newInvokableModels);
   };
 
   const handleSetComposerModel = () => {
@@ -416,14 +542,8 @@ const ViewAgent = () => {
       parameters: dialogParams,
       builtInTool: dialogBuiltInTool || null,
     };
-    setAgent(prev => ({
-      ...prev,
-      composerModelConfig: newComposerConfig,
-    }));
-    // Sync to context in creation flow
-    if (isCreationFlow) {
-      agentFlowContext.setComposerModelConfig(newComposerConfig);
-    }
+    setAgent(prev => ({ ...prev, composerModelConfig: newComposerConfig }));
+    syncToContext('composerModelConfig', newComposerConfig);
     setModelDialogOpen(false);
   };
 
@@ -457,19 +577,14 @@ const ViewAgent = () => {
     }
   };
 
-  // Schema handlers for creation flow
   const handleInputSchemaChange = (newSchema) => {
     setAgent(prev => ({ ...prev, inputSchema: newSchema }));
-    if (isCreationFlow) {
-      agentFlowContext.setInputSchema(newSchema);
-    }
+    syncToContext('inputSchema', newSchema);
   };
 
   const handleOutputSchemaChange = (newSchema) => {
     setAgent(prev => ({ ...prev, outputSchema: newSchema }));
-    if (isCreationFlow) {
-      agentFlowContext.setOutputSchema(newSchema);
-    }
+    syncToContext('outputSchema', newSchema);
   };
 
   if (loading) {
@@ -488,14 +603,14 @@ const ViewAgent = () => {
     <Paper sx={{ p: 3, maxWidth: 900, margin: 'auto', mt: 4 }}>
         <Typography variant="h5" component="h2" gutterBottom>
             {isCreationFlow 
-              ? (hasCode ? 'Review Your Agent' : 'Configure Your Agent')
+              ? (hasCode ? 'Review Your Agent' : 'Create New Agent')
               : `Agent: ${agent.name}`}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {isCreationFlow 
               ? (hasCode 
-                  ? 'Review the generated code. You can edit the description, schemas, or models and regenerate.'
-                  : 'Configure schemas and models, then generate the agent code.')
+                  ? 'Review the generated code. Edit and regenerate as needed.'
+                  : 'Configure your agent\'s tools, description, schemas, and models, then generate code.')
               : 'View and edit your agent configuration.'}
         </Typography>
 
@@ -507,60 +622,163 @@ const ViewAgent = () => {
         {/* Tools & Specs Section */}
         <Accordion defaultExpanded={!hasCode}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography>Tools & Specs</Typography>
+                <Typography>Tools & Capabilities</Typography>
             </AccordionSummary>
             <AccordionDetails>
-                <Typography variant="subtitle1" gutterBottom>MCP Servers</Typography>
-                {Object.keys(agent.tools || {}).length > 0 ? (
-                <List dense>
-                    {Object.entries(agent.tools).map(([url, selectedTools]) => (
-                        <ListItem key={url}>
-                            <ListItemIcon><WebIcon /></ListItemIcon>
-                            <ListItemText primary={url} secondary={selectedTools.length > 0 ? `Selected: ${selectedTools.join(', ')}` : "No specific tools selected"} />
-                        </ListItem>
-                    ))}
-                </List>
-                ) : (<Typography variant="body2" color="text.secondary">No MCP servers configured.</Typography>)}
-                
-                <Typography variant="subtitle1" gutterBottom sx={{mt: 2}}>Swagger/OpenAPI Specs</Typography>
-                {agent.swaggerSpecs?.length > 0 ? (
-                <List dense>
-                    {agent.swaggerSpecs.map(spec => (
-                        <ListItem
-                            key={spec.name}
-                            secondaryAction={
-                                <IconButton edge="end" aria-label="view" onClick={() => handleViewSpec(spec)}>
-                                    <VisibilityIcon />
-                                </IconButton>
-                            }
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                    <Tabs value={toolsTabIndex} onChange={(e, v) => setToolsTabIndex(v)}>
+                        <Tab label="MCP Servers" />
+                        <Tab label="Swagger / OpenAPI" />
+                        <Tab label="Gofannon Agents" />
+                    </Tabs>
+                </Box>
+
+                {/* MCP Servers Tab */}
+                {toolsTabIndex === 0 && (
+                    <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Connect to Model Context Protocol (MCP) servers to access external tools.
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                            <TextField
+                                fullWidth
+                                label="MCP Server URL"
+                                variant="outlined"
+                                size="small"
+                                value={currentToolUrl}
+                                onChange={(e) => setCurrentToolUrl(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleAddMcpServer()}
+                            />
+                            <Button variant="contained" onClick={handleAddMcpServer}>Add</Button>
+                        </Box>
+                        {Object.keys(agent.tools || {}).length > 0 && (
+                            <List dense sx={{ border: '1px solid #444', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
+                                {Object.keys(agent.tools).map((url) => (
+                                    <ListItem
+                                        key={url}
+                                        secondaryAction={
+                                            <>
+                                                <IconButton onClick={() => handleOpenToolsDialog(url)} sx={{ mr: 1 }}>
+                                                    <BuildIcon />
+                                                </IconButton>
+                                                <IconButton onClick={() => handleDeleteMcpServer(url)}>
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </>
+                                        }
+                                    >
+                                        <ListItemIcon><WebIcon /></ListItemIcon>
+                                        <ListItemText 
+                                            primary={url} 
+                                            secondary={agent.tools[url]?.length > 0 ? `Selected: ${agent.tools[url].join(', ')}` : "No tools selected"} 
+                                        />
+                                    </ListItem>
+                                ))}
+                            </List>
+                        )}
+                    </Box>
+                )}
+
+                {/* Swagger Tab */}
+                {toolsTabIndex === 1 && (
+                    <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Add OpenAPI/Swagger specs to expose REST APIs as tools.
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                            <TextField
+                                fullWidth
+                                label="Spec URL"
+                                variant="outlined"
+                                size="small"
+                                value={specUrl}
+                                onChange={(e) => setSpecUrl(e.target.value)}
+                                disabled={isFetchingSpec}
+                            />
+                            <Button variant="contained" onClick={handleFetchSpec} disabled={isFetchingSpec}>
+                                {isFetchingSpec ? <CircularProgress size={20} /> : 'Fetch'}
+                            </Button>
+                        </Box>
+                        <Divider sx={{ my: 2 }}>OR</Divider>
+                        <Button
+                            variant="outlined"
+                            component="label"
+                            fullWidth
+                            startIcon={<UploadFileIcon />}
+                            sx={{ mb: 2 }}
                         >
-                            <ListItemIcon><ArticleIcon /></ListItemIcon>
-                            <ListItemText primary={spec.name} />
-                        </ListItem>
-                    ))}
-                </List>
-                ) : (<Typography variant="body2" color="text.secondary">No Swagger specs uploaded.</Typography>)}
-                
-                <Typography variant="subtitle1" gutterBottom sx={{mt: 2}}>Gofannon Agents</Typography>
-                {agent.gofannonAgents && agent.gofannonAgents.length > 0 ? (
-                <List dense>
-                    {agent.gofannonAgents.map(ga => (
-                        <ListItem key={ga.id}>
-                            <ListItemIcon><SmartToyIcon /></ListItemIcon>
-                            <ListItemText primary={ga.name} />
-                        </ListItem>
-                    ))}
-                </List>
-                ) : (<Typography variant="body2" color="text.secondary">No Gofannon agents configured.</Typography>)}
-                
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={handleEditTools}
-                  sx={{ mt: 2 }}
-                >
-                  Edit Tools & Specs
-                </Button>
+                            Upload Spec File
+                            <input type="file" hidden accept=".json,.yaml,.yml" onChange={handleFileUpload} />
+                        </Button>
+                        {agent.swaggerSpecs?.length > 0 && (
+                            <List dense sx={{ border: '1px solid #444', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
+                                {agent.swaggerSpecs.map((spec) => (
+                                    <ListItem
+                                        key={spec.name}
+                                        secondaryAction={
+                                            <>
+                                                <IconButton onClick={() => handleViewSpec(spec)} sx={{ mr: 1 }}>
+                                                    <VisibilityIcon />
+                                                </IconButton>
+                                                <IconButton onClick={() => handleDeleteSpec(spec.name)}>
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </>
+                                        }
+                                    >
+                                        <ListItemIcon><ArticleIcon /></ListItemIcon>
+                                        <ListItemText primary={spec.name} />
+                                    </ListItem>
+                                ))}
+                            </List>
+                        )}
+                    </Box>
+                )}
+
+                {/* Gofannon Agents Tab */}
+                {toolsTabIndex === 2 && (
+                    <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Use other saved agents as callable tools.
+                        </Typography>
+                        {loadingAgents ? <CircularProgress size={24} /> : (
+                            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Select an Agent</InputLabel>
+                                    <Select
+                                        value={selectedAgentId}
+                                        label="Select an Agent"
+                                        onChange={(e) => setSelectedAgentId(e.target.value)}
+                                    >
+                                        {availableAgents.map((a) => (
+                                            <MenuItem key={a._id} value={a._id}>{a.name}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                <Button variant="contained" onClick={handleAddGofannonAgent} disabled={!selectedAgentId}>
+                                    Add
+                                </Button>
+                            </Box>
+                        )}
+                        {agent.gofannonAgents?.length > 0 && (
+                            <List dense sx={{ border: '1px solid #444', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
+                                {agent.gofannonAgents.map((ga) => (
+                                    <ListItem
+                                        key={ga.id}
+                                        secondaryAction={
+                                            <IconButton onClick={() => handleDeleteGofannonAgent(ga.id)}>
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        }
+                                    >
+                                        <ListItemIcon><SmartToyIcon /></ListItemIcon>
+                                        <ListItemText primary={ga.name} />
+                                    </ListItem>
+                                ))}
+                            </List>
+                        )}
+                    </Box>
+                )}
             </AccordionDetails>
         </Accordion>
 
@@ -577,7 +795,7 @@ const ViewAgent = () => {
                     label="Agent Description"
                     value={agent.description || ''}
                     onChange={(e) => handleFieldChange('description', e.target.value)}
-                    placeholder="Describe what your agent should do..."
+                    placeholder="Describe what your agent should do. Be specific about its purpose, inputs, outputs, and how it should use the available tools..."
                 />
             </AccordionDetails>
         </Accordion>
@@ -624,20 +842,15 @@ const ViewAgent = () => {
                         The model used to generate agent code.
                     </Typography>
                     {agent.composerModelConfig ? (
-                        (() => {
-                            const paramStr = Object.entries(agent.composerModelConfig.parameters || {})
-                                .map(([k, v]) => `${k}: ${v}`)
-                                .join(', ');
-                            const toolStr = agent.composerModelConfig.builtInTool ? ` + ${agent.composerModelConfig.builtInTool}` : '';
-                            return (
-                                <Chip 
-                                    label={`${agent.composerModelConfig.provider}/${agent.composerModelConfig.model}${toolStr}${paramStr ? ` (${paramStr})` : ''}`} 
-                                    color="primary" 
-                                    sx={{ mr: 1, mt: 1 }}
-                                    onDelete={() => setAgent(prev => ({ ...prev, composerModelConfig: null }))}
-                                />
-                            );
-                        })()
+                        <Chip 
+                            label={`${agent.composerModelConfig.provider}/${agent.composerModelConfig.model}${agent.composerModelConfig.builtInTool ? ` + ${agent.composerModelConfig.builtInTool}` : ''}`} 
+                            color="primary" 
+                            sx={{ mr: 1, mt: 1 }}
+                            onDelete={() => {
+                                setAgent(prev => ({ ...prev, composerModelConfig: null }));
+                                syncToContext('composerModelConfig', null);
+                            }}
+                        />
                     ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
                             No composer model configured.
@@ -661,24 +874,18 @@ const ViewAgent = () => {
                         Invokable Models
                     </Typography>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Models the agent can call at runtime via litellm.acompletion().
+                        Models the agent can call at runtime.
                     </Typography>
-                    {agent.invokableModels && agent.invokableModels.length > 0 ? (
+                    {agent.invokableModels?.length > 0 ? (
                         <Box sx={{ mt: 1 }}>
-                            {agent.invokableModels.map((m, idx) => {
-                                const paramStr = Object.entries(m.parameters || {})
-                                    .map(([k, v]) => `${k}: ${v}`)
-                                    .join(', ');
-                                const toolStr = m.builtInTool ? ` + ${m.builtInTool}` : '';
-                                return (
-                                    <Chip 
-                                        key={idx}
-                                        label={`${m.provider}/${m.model}${toolStr}${paramStr ? ` (${paramStr})` : ''}`} 
-                                        sx={{ mr: 1, mb: 1 }}
-                                        onDelete={() => handleRemoveInvokableModel(idx)}
-                                    />
-                                );
-                            })}
+                            {agent.invokableModels.map((m, idx) => (
+                                <Chip 
+                                    key={idx}
+                                    label={`${m.provider}/${m.model}${m.builtInTool ? ` + ${m.builtInTool}` : ''}`} 
+                                    sx={{ mr: 1, mb: 1 }}
+                                    onDelete={() => handleRemoveInvokableModel(idx)}
+                                />
+                            ))}
                         </Box>
                     ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 1 }}>
@@ -698,7 +905,7 @@ const ViewAgent = () => {
             </AccordionDetails>
         </Accordion>
 
-        {/* Docstring Section - only show if exists */}
+        {/* Docstring Section */}
         {agent.docstring && (
             <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -714,23 +921,7 @@ const ViewAgent = () => {
             </Accordion>
         )}
 
-        {/* Composer Thoughts Section - only show if exists */}
-        {agent.composerThoughts && (
-            <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography>Composer Thoughts</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper', overflowX: 'auto', border: '1px solid #444', maxHeight: '300px' }}>
-                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
-                            {JSON.stringify(agent.composerThoughts, null, 2)}
-                        </pre>
-                    </Paper>
-                </AccordionDetails>
-            </Accordion>
-        )}
-
-        {/* Agent Code Section - only show if code exists */}
+        {/* Agent Code Section */}
         {hasCode && (
             <Accordion defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -742,8 +933,8 @@ const ViewAgent = () => {
             </Accordion>
         )}
 
-        {/* Deployments Section - only show for existing deployed agents */}
-        {!isCreationFlow && deployment && deployment.is_deployed && (
+        {/* Deployments Section */}
+        {!isCreationFlow && deployment?.is_deployed && (
             <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography>Deployments</Typography>
@@ -751,19 +942,8 @@ const ViewAgent = () => {
                 <AccordionDetails>
                     <Typography variant="subtitle1" gutterBottom>Internal REST Endpoint</Typography>
                     <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper', fontFamily: 'monospace' }}>
-                        <Typography component="div" gutterBottom>
-                            <Chip label="POST" color="success" size="small" sx={{ mr: 1 }} />
-                            <Typography component="span" sx={{ fontWeight: 'bold' }}>{`/rest/${deployment.friendly_name}`}</Typography>
-                        </Typography>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>Request Body:</Typography>
-                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, padding: '8px', backgroundColor: '#2e2e2e', color: '#dddddd', borderRadius: '4px' }}>
-                            {JSON.stringify(agent.inputSchema, null, 2)}
-                        </pre>
-                        <Typography variant="body2" sx={{ mt: 2, fontWeight: 'bold' }}>Success Response (200 OK):</Typography>
-                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, padding: '8px', backgroundColor: '#2e2e2e', color: '#dddddd', borderRadius: '4px' }}>
-                            {JSON.stringify(agent.outputSchema, null, 2)}
-                        </pre>
+                        <Chip label="POST" color="success" size="small" sx={{ mr: 1 }} />
+                        <Typography component="span" sx={{ fontWeight: 'bold' }}>{`/rest/${deployment.friendly_name}`}</Typography>
                     </Paper>
                     <Button
                         variant="contained"
@@ -794,45 +974,24 @@ const ViewAgent = () => {
             )}
 
             {/* Generate/Regenerate Code Button */}
-            {!hasCode ? (
-                <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <CodeIcon />}
-                    onClick={handleGenerateCode}
-                    disabled={isGenerating || !agent.composerModelConfig}
-                >
-                    {isGenerating ? 'Generating...' : 'Generate Code'}
-                </Button>
-            ) : (
-                <Button
-                    variant="outlined"
-                    color="secondary"
-                    startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
-                    onClick={handleGenerateCode}
-                    disabled={isGenerating || isSaving}
-                >
-                    {isGenerating ? 'Regenerating...' : 'Regenerate Code'}
-                </Button>
-            )}
+            <Button
+                variant={hasCode ? "outlined" : "contained"}
+                color={hasCode ? "secondary" : "primary"}
+                startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : (hasCode ? <RefreshIcon /> : <CodeIcon />)}
+                onClick={handleGenerateCode}
+                disabled={isGenerating || !agent.composerModelConfig}
+            >
+                {isGenerating ? 'Generating...' : (hasCode ? 'Regenerate Code' : 'Generate Code')}
+            </Button>
 
             {/* Only show these when code exists */}
             {hasCode && (
                 <>
-                    <Button
-                        variant="outlined"
-                        startIcon={<PlayArrowIcon />}
-                        onClick={handleRunInSandbox}
-                    >
+                    <Button variant="outlined" startIcon={<PlayArrowIcon />} onClick={handleRunInSandbox}>
                         Run in Sandbox
                     </Button>
                     
-                    <Button
-                        variant="outlined"
-                        color="secondary"
-                        startIcon={<PublishIcon />}
-                        onClick={handleDeploy}
-                    >
+                    <Button variant="outlined" color="secondary" startIcon={<PublishIcon />} onClick={handleDeploy}>
                         Deploy Agent
                     </Button>
 
@@ -841,9 +1000,7 @@ const ViewAgent = () => {
                             variant="contained"
                             color="primary"
                             startIcon={<SaveIcon />}
-                            onClick={() => {
-                              updateContextAndNavigate('/create-agent/save');
-                            }}
+                            onClick={() => navigate('/create-agent/save')}
                         >
                             Save Agent
                         </Button>
@@ -863,21 +1020,16 @@ const ViewAgent = () => {
         </Stack>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
-            open={deleteConfirmationOpen}
-            onClose={() => setDeleteConfirmationOpen(false)}
-        >
+        <Dialog open={deleteConfirmationOpen} onClose={() => setDeleteConfirmationOpen(false)}>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogContent>
                 <DialogContentText>
-                    Are you sure you want to permanently delete the agent "{agent?.name}"? This action cannot be undone.
+                    Are you sure you want to permanently delete this agent? This action cannot be undone.
                 </DialogContentText>
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => setDeleteConfirmationOpen(false)}>Cancel</Button>
-                <Button onClick={handleDeleteAgent} color="error" variant="contained">
-                    Delete
-                </Button>
+                <Button onClick={handleDeleteAgent} color="error" variant="contained">Delete</Button>
             </DialogActions>
         </Dialog> 
 
@@ -900,6 +1052,15 @@ const ViewAgent = () => {
             setSelectedBuiltInTool={setDialogBuiltInTool}
             loadingProviders={loadingProviders}
             providersError={null}
+        />
+
+        {/* Tools Selection Dialog */}
+        <ToolsSelectionDialog
+            open={toolsDialog.open}
+            onClose={() => setToolsDialog({ ...toolsDialog, open: false })}
+            mcpUrl={toolsDialog.mcpUrl}
+            existingSelectedTools={toolsDialog.existingSelectedTools}
+            onSaveSelectedTools={handleSaveSelectedTools}
         />
 
         <SpecViewerModal

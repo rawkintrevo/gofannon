@@ -8,8 +8,6 @@ import SavedAgentsPage from '../pages/SavedAgentsPage';
 import DeployedApisPage from '../pages/DeployedApisPage';
 import DemoAppsPage from '../pages/DemoAppsPage';
 import ViewDemoAppPage from '../pages/ViewDemoAppPage';
-import ToolsScreen from '../pages/AgentCreationFlow/ToolsScreen';
-import DescriptionScreen from '../pages/AgentCreationFlow/DescriptionScreen';
 import SandboxScreen from '../pages/AgentCreationFlow/SandboxScreen';
 import DeployScreen from '../pages/AgentCreationFlow/DeployScreen';
 import SaveAgentScreen from '../pages/AgentCreationFlow/SaveAgentScreen';
@@ -99,11 +97,11 @@ export const defaultRoutes = [
       </AgentCreationFlowProvider>
     ),
     children: [
-      { index: true, element: <Navigate to="tools" replace />, private: false, layout: false },
-      { path: 'tools', element: <ToolsScreen />, private: false, layout: false },
-      { path: 'description', element: <DescriptionScreen />, private: false, layout: false },
-      { path: 'schemas', element: <Navigate to="/create-agent/code" replace />, private: false, layout: false }, // Redirect legacy route
-      { path: 'code', element: <ViewAgent />, private: false, layout: false },
+      { index: true, element: <ViewAgent />, private: false, layout: false },
+      { path: 'tools', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
+      { path: 'description', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
+      { path: 'schemas', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
+      { path: 'code', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
       { path: 'sandbox', element: <SandboxScreen />, private: false, layout: false },
       { path: 'deploy', element: <DeployScreen />, private: false, layout: false },
       { path: 'save', element: <SaveAgentScreen />, private: false, layout: false },
