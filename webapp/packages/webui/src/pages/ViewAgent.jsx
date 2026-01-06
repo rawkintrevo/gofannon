@@ -639,7 +639,7 @@ const ViewAgent = () => {
 
     try {
       await agentService.deleteAgent(agentId);
-      navigate('/agents', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || 'Failed to delete agent.');
     } finally {
