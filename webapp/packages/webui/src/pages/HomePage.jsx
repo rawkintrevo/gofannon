@@ -124,7 +124,7 @@ const HomePage = () => {
               variant="contained" 
               size="small" 
               startIcon={<AddIcon />}
-              onClick={() => navigate('/create-agent')}
+              onClick={() => navigate('/create-agent', { state: { fresh: true } })}
             >
               Create
             </Button>
@@ -142,7 +142,7 @@ const HomePage = () => {
                 {agentFilter === 'all' && (
                   <Button 
                     size="small" 
-                    onClick={() => navigate('/create-agent')}
+                    onClick={() => navigate('/create-agent', { state: { fresh: true } })}
                     sx={{ mt: 1 }}
                   >
                     Create your first agent
@@ -246,7 +246,7 @@ const HomePage = () => {
               variant="contained" 
               size="small" 
               startIcon={<AddIcon />}
-              onClick={() => navigate('/create-demo')}
+              onClick={() => navigate('/create-demo', { state: { fresh: true } })}
             >
               Create
             </Button>
@@ -261,7 +261,7 @@ const HomePage = () => {
                 <Typography color="text.secondary" variant="body2">No demo apps yet</Typography>
                 <Button 
                   size="small" 
-                  onClick={() => navigate('/create-demo')}
+                  onClick={() => navigate('/create-demo', { state: { fresh: true } })}
                   sx={{ mt: 1 }}
                 >
                   Create your first demo

@@ -147,7 +147,7 @@ const SandboxScreen = () => {
           <ArrowBackIcon sx={{ fontSize: 20 }} />
         </IconButton>
         <Typography variant="h5" component="h2">
-          {agentId ? 'Agent Sandbox' : 'Screen 5: Sandbox'}
+          Sandbox
         </Typography>
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
