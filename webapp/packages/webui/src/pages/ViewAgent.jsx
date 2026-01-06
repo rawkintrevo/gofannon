@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -60,6 +60,7 @@ import ToolsSelectionDialog from './AgentCreationFlow/ToolsSelectionDialog';
 const ViewAgent = () => {
   const { agentId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const agentFlowContext = useAgentFlow();
 
   const [agent, setAgent] = useState(null);
@@ -67,7 +68,7 @@ const ViewAgent = () => {
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);  
   const [viewingSpec, setViewingSpec] = useState({ open: false, name: '', content: '' });
   
@@ -180,8 +181,13 @@ const ViewAgent = () => {
     setLoading(true);
     
     try {
-      // Check sessionStorage for unsaved edits first
-      const savedEdits = sessionStorage.getItem(sessionStorageKey);
+      // If starting fresh (from Create button), clear any old draft
+      if (location.state?.fresh && isCreationFlow) {
+        sessionStorage.removeItem(sessionStorageKey);
+      }
+      
+      // Check sessionStorage for unsaved edits (only if not starting fresh)
+      const savedEdits = !location.state?.fresh ? sessionStorage.getItem(sessionStorageKey) : null;
       if (savedEdits) {
         try {
           const parsed = JSON.parse(savedEdits);
@@ -233,7 +239,7 @@ const ViewAgent = () => {
     } finally {
       setLoading(false);
     }
-  }, [agentId, isCreationFlow, sessionStorageKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agentId, isCreationFlow, sessionStorageKey, location.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadAgentData();
@@ -275,7 +281,7 @@ const ViewAgent = () => {
   const handleUpdateAgent = async () => {
     if (!agentId || !agent) return;
     setError(null);
-    setSaveSuccess(false);
+    setSuccessMessage('');
     setIsSaving(true);
 
     try {
@@ -294,11 +300,60 @@ const ViewAgent = () => {
         friendlyName: agent.friendlyName,
       };
       await agentService.updateAgent(agentId, updatePayload);
-      setSaveSuccess(true);
+      setSuccessMessage('Agent updated successfully!');
       // Clear session storage since changes are now saved to database
       sessionStorage.removeItem(sessionStorageKey);
     } catch (err) {
       setError(err.message || 'Failed to update agent.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveNewAgent = async () => {
+    if (!agent) return;
+    
+    // Validate required fields
+    if (!agent.name || !agent.name.trim()) {
+      setError('Agent name is required. Generate code first to get a name, or set one manually.');
+      return;
+    }
+    if (!agent.description || !agent.description.trim()) {
+      setError('Agent description is required.');
+      return;
+    }
+    if (!agent.code || !agent.code.trim()) {
+      setError('Agent code is required. Please generate code before saving.');
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage('');
+    setIsSaving(true);
+
+    try {
+      const agentData = {
+        name: agent.name,
+        description: agent.description,
+        code: agent.code,
+        tools: agent.tools,
+        swaggerSpecs: agent.swaggerSpecs,
+        gofannonAgents: agent.gofannonAgents?.map(ga => typeof ga === 'string' ? ga : ga.id),
+        inputSchema: agent.inputSchema,
+        outputSchema: agent.outputSchema,
+        invokableModels: agent.invokableModels,
+        composerModelConfig: agent.composerModelConfig,
+        docstring: agent.docstring,
+        friendlyName: agent.friendlyName,
+      };
+      await agentService.saveAgent(agentData);
+      setSuccessMessage('Agent saved successfully! Redirecting...');
+      // Clear session storage since agent is now saved
+      sessionStorage.removeItem(sessionStorageKey);
+      // Redirect to home after short delay
+      setTimeout(() => navigate('/'), 1500);
+    } catch (err) {
+      setError(err.message || 'Failed to save agent.');
     } finally {
       setIsSaving(false);
     }
@@ -350,7 +405,7 @@ const ViewAgent = () => {
         agentFlowContext.setFriendlyName(response.friendlyName);
       }
 
-      setSaveSuccess(true);
+      setSuccessMessage('Code generated successfully!');
     } catch (err) {
       setError(err.message || 'Failed to generate code.');
     } finally {
@@ -360,7 +415,7 @@ const ViewAgent = () => {
 
   const handleFieldChange = (field, value) => {
     setAgent((prev) => ({ ...prev, [field]: value }));
-    setSaveSuccess(false);
+    setSuccessMessage('');
     syncToContext(field, value);
   };
 
@@ -644,8 +699,8 @@ const ViewAgent = () => {
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
-        {saveSuccess && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSaveSuccess(false)}>
-          {hasCode ? 'Operation completed successfully!' : 'Code generated successfully!'}
+        {successMessage && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage('')}>
+          {successMessage}
         </Alert>}
 
         {/* Tools & Specs Section */}
@@ -814,9 +869,18 @@ const ViewAgent = () => {
         {/* Description Section */}
         <Accordion defaultExpanded={!hasCode}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography>Description</Typography>
+                <Typography>Name & Description</Typography>
             </AccordionSummary>
             <AccordionDetails>
+                <TextField 
+                    fullWidth
+                    label="Agent Name"
+                    value={agent.name || ''}
+                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    placeholder="A short, descriptive name for your agent"
+                    sx={{ mb: 2 }}
+                    helperText="This will be auto-generated when you generate code, but you can change it"
+                />
                 <TextField 
                     fullWidth
                     multiline
@@ -1028,10 +1092,11 @@ const ViewAgent = () => {
                         <Button
                             variant="contained"
                             color="primary"
-                            startIcon={<SaveIcon />}
-                            onClick={() => navigate('/create-agent/save')}
+                            startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                            onClick={handleSaveNewAgent}
+                            disabled={isSaving || isGenerating || !hasCode}
                         >
-                            Save Agent
+                            {isSaving ? 'Saving...' : 'Save Agent'}
                         </Button>
                     ) : (
                         <Button

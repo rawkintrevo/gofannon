@@ -100,7 +100,7 @@ const SavedAgentsPage = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => navigate('/create-agent')}
+          onClick={() => navigate('/create-agent', { state: { fresh: true } })}
         >
           Create Agent
         </Button>
@@ -121,7 +121,7 @@ const SavedAgentsPage = () => {
               </Typography>
               <Button 
                 size="small" 
-                onClick={() => navigate('/create-agent')}
+                onClick={() => navigate('/create-agent', { state: { fresh: true } })}
                 sx={{ mt: 1 }}
               >
                 Create your first agent

@@ -10,7 +10,6 @@ import DemoAppsPage from '../pages/DemoAppsPage';
 import ViewDemoAppPage from '../pages/ViewDemoAppPage';
 import SandboxScreen from '../pages/AgentCreationFlow/SandboxScreen';
 import DeployScreen from '../pages/AgentCreationFlow/DeployScreen';
-import SaveAgentScreen from '../pages/AgentCreationFlow/SaveAgentScreen';
 import SelectApisScreen from '../pages/DemoCreationFlow/SelectApisScreen';
 import SelectModelScreen from '../pages/DemoCreationFlow/SelectModelScreen';
 import CanvasScreen from '../pages/DemoCreationFlow/CanvasScreen';
@@ -104,7 +103,6 @@ export const defaultRoutes = [
       { path: 'code', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
       { path: 'sandbox', element: <SandboxScreen />, private: false, layout: false },
       { path: 'deploy', element: <DeployScreen />, private: false, layout: false },
-      { path: 'save', element: <SaveAgentScreen />, private: false, layout: false },
     ],
   },
   {

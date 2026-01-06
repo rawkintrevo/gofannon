@@ -94,7 +94,7 @@ const DemoAppsPage = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => navigate('/create-demo')}
+          onClick={() => navigate('/create-demo', { state: { fresh: true } })}
         >
           Create Demo
         </Button>
@@ -115,7 +115,7 @@ const DemoAppsPage = () => {
               </Typography>
               <Button 
                 size="small" 
-                onClick={() => navigate('/create-demo')}
+                onClick={() => navigate('/create-demo', { state: { fresh: true } })}
                 sx={{ mt: 1 }}
               >
                 Create your first demo

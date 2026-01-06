@@ -1,6 +1,6 @@
 // webapp/packages/webui/src/pages/DemoCreationFlow/SelectApisScreen.jsx
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDemoFlow } from './DemoCreationFlowContext';
 import agentService from '../../services/agentService';
 import {
@@ -19,11 +19,23 @@ import {
 import ApiIcon from '@mui/icons-material/Api';
 
 const SelectApisScreen = () => {
-  const { selectedApis, setSelectedApis } = useDemoFlow();
+  const { selectedApis, setSelectedApis, resetState } = useDemoFlow();
   const [availableApis, setAvailableApis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const freshHandled = useRef(false);
+
+  // Clear state if starting fresh
+  useEffect(() => {
+    if (location.state?.fresh && !freshHandled.current) {
+      freshHandled.current = true;
+      if (resetState) {
+        resetState();
+      }
+    }
+  }, [location.state, resetState]);
 
   useEffect(() => {
     const fetchApis = async () => {
