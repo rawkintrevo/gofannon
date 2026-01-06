@@ -82,6 +82,80 @@ async def _execute_agent_code(code: str, input_dict: dict, tools: dict, gofannon
                 db=self.db,
             )
 
+    async def web_search(query: str, model: str = "openai/gpt-4o-mini", search_context_size: str = "medium") -> str:
+        """
+        Perform a web search using an LLM with built-in web search capability.
+        
+        :param query: The search query or question to answer using web search.
+        :param model: The model to use for web search (default: openai/gpt-4o-mini).
+        :param search_context_size: Size of search context - 'low', 'medium', or 'high'.
+        :return: The response from the LLM with web search results incorporated.
+        """
+        try:
+            # Use the responses API which supports web_search tool
+            response_obj = await litellm.aresponses(
+                model=model,
+                input=query,
+                tools=[{"type": "web_search", "search_context_size": search_context_size}],
+            )
+            
+            # Get the response ID
+            response_id = response_obj.id if hasattr(response_obj, 'id') else response_obj.get('id')
+            if not response_id:
+                print(f"web_search: No response ID returned")
+                raise Exception("No response ID")
+            
+            # Poll for completion
+            final_response = None
+            for i in range(15):  # Poll for up to 30 seconds
+                await asyncio.sleep(2)
+                response_status = await litellm.aget_responses(response_id=response_id)
+                status = response_status.status if hasattr(response_status, 'status') else response_status.get('status')
+                if status == "completed":
+                    final_response = response_status
+                    break
+            
+            if not final_response:
+                print(f"web_search: Polling timed out")
+                raise Exception("Polling timed out")
+            
+            # Helper to get attribute from object or dict
+            def get_attr(obj, key, default=None):
+                if isinstance(obj, dict):
+                    return obj.get(key, default)
+                return getattr(obj, key, default)
+            
+            # Extract content from the response
+            output_list = get_attr(final_response, 'output', [])
+            for output_item in output_list:
+                if output_item:
+                    item_content = get_attr(output_item, 'content')
+                    if item_content:
+                        for content_block in item_content:
+                            text = get_attr(content_block, 'text', '')
+                            if text:
+                                return text
+            
+            print(f"web_search: No text content found in response, trying fallback")
+            raise Exception("No text content found")
+            
+        except Exception as e:
+            print(f"web_search primary method failed: {type(e).__name__}: {e}")
+            # Fallback: try using gpt-4o-search-preview which has web search built-in
+            try:
+                print("web_search: Trying fallback with gpt-4o-search-preview")
+                response = await litellm.acompletion(
+                    model="openai/gpt-4o-search-preview",
+                    messages=[{"role": "user", "content": query}],
+                )
+                content = response.choices[0].message.content
+                if content:
+                    return content
+            except Exception as e2:
+                print(f"web_search fallback also failed: {type(e2).__name__}: {e2}")
+            
+            return ""
+
     exec_globals = {
         "RemoteMCPClient": RemoteMCPClient,
         "litellm": litellm,
@@ -89,8 +163,9 @@ async def _execute_agent_code(code: str, input_dict: dict, tools: dict, gofannon
         "httpx": httpx,
         "re": __import__('re'),
         "json": __import__('json'),
-        "http_client": httpx.AsyncClient(),
+        "http_client": httpx.AsyncClient(follow_redirects=True),  # Follow redirects automatically
         "gofannon_client": GofannonClient(gofannon_agents, db),
+        "web_search": web_search,  # Add web search capability
         "__builtins__": __builtins__,
     }
 

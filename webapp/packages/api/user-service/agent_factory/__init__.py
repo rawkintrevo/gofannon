@@ -81,6 +81,48 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
             model_name = f"{model_config.provider}/{model_config.model}"
             model_docs += f"- `{model_name}`\n"
         model_docs += "\n"
+    
+    ## Generate docs for built-in tools (like web_search)
+    built_in_tools_docs = ""
+    if request.built_in_tools:
+        if "web_search" in request.built_in_tools:
+            built_in_tools_docs = """## Web Search
+
+The agent has access to a `web_search` function for searching the web. This function is already available in the execution environment.
+
+**Usage:**
+```python
+# Simply call web_search directly - it's always available when enabled
+result = await web_search(query="your search query here")
+```
+
+**Function signature:**
+`async def web_search(query: str, model: str = "openai/gpt-4o-mini", search_context_size: str = "medium") -> str`
+
+**Parameters:**
+- `query` (str): The search query or question to answer using web search.
+- `model` (str, optional): The model to use for web search. Default: "openai/gpt-4o-mini"
+- `search_context_size` (str, optional): Size of search context - 'low', 'medium', or 'high'. Default: "medium"
+
+**Returns:** A string containing the search results and answer. Returns empty string if search fails.
+
+**Important:** 
+- Do NOT check `if "web_search" in globals()` - just call the function directly
+- Always `await` the function call
+- Handle the case where the result might be empty
+
+**Example:**
+```python
+# Search for information
+search_result = await web_search(query="arXiv 2507.15855 paper abstract")
+if search_result:
+    # Use the search result
+    summary = search_result
+else:
+    # Fallback to other methods
+    summary = "Could not retrieve search results"
+```
+"""
    
     input_schema_str = json.dumps(request.input_schema, indent=4)
     output_schema_str = json.dumps(request.output_schema, indent=4)
@@ -97,6 +139,8 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
         system_prompt_parts.append(gofannon_agent_docs)        
     if model_docs:
         system_prompt_parts.append(model_docs)
+    if built_in_tools_docs:
+        system_prompt_parts.append(built_in_tools_docs)
     if request.tools:
         system_prompt_parts.append(how_to_use_tools)
     if request.swagger_specs:
@@ -132,14 +176,10 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
         {"role": "user", "content": request.description},
     ]
 
-    # Build tools list from config
-    built_in_tools = []
-    model_tool_config = PROVIDER_CONFIG.get(provider, {}).get("models", {}).get(model, {}).get("built_in_tools", [])
-    if request.built_in_tools:
-        for tool_id in request.built_in_tools:
-            tool_conf = next((t for t in model_tool_config if t["id"] == tool_id), None)
-            if tool_conf:
-                built_in_tools.append(tool_conf["tool_config"])
+    # Note: built_in_tools are NOT passed to the code generation LLM.
+    # They are documented in the prompt so the LLM generates code that uses
+    # the web_search() function available in the sandbox, rather than having
+    # the LLM execute web searches during code generation.
     
     config = request.composer_model_config.parameters
     
@@ -149,7 +189,7 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
             model=model,
             messages=code_gen_messages,
             parameters=config,
-            tools=built_in_tools if built_in_tools else None,
+            tools=None,  # Don't pass tools - we want code generation, not tool execution
         )
 
     # ---- Friendly Name and Docstring Generation Task ----

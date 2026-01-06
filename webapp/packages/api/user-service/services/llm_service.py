@@ -102,13 +102,13 @@ async def call_llm(
             input_text = ""
             for msg in reversed(other_messages):
                 if msg.get("role") == "user":
-                    content = msg.get("content", "")
-                    if isinstance(content, str):
-                        input_text = content
-                    elif isinstance(content, list):
+                    msg_content = msg.get("content", "")
+                    if isinstance(msg_content, str):
+                        input_text = msg_content
+                    elif isinstance(msg_content, list):
                         # Handle list-format content (e.g., multimodal)
                         input_text = " ".join(
-                            item.get("text", "") for item in content 
+                            item.get("text", "") for item in msg_content 
                             if isinstance(item, dict) and item.get("type") == "text"
                         )
                     break
@@ -135,19 +135,72 @@ async def call_llm(
                     break
             
             if final_response:
+                # Helper to get attribute from object or dict
+                def get_attr(obj, key, default=None):
+                    if isinstance(obj, dict):
+                        return obj.get(key, default)
+                    return getattr(obj, key, default)
+                
                 # Extract thoughts/summary from the first output block
-                if len(final_response.output) > 0 and final_response.output[0] and hasattr(final_response.output[0], 'summary') and final_response.output[0].summary:
-                    summary_texts = [s.text for s in final_response.output[0].summary if hasattr(s, 'text')]
-                    thoughts = {"summary": summary_texts}
-                elif len(final_response.output) > 0 and final_response.output[0]: # Fallback for other tool outputs
-                     thoughts = final_response.output[0].model_dump()
+                output_list = get_attr(final_response, 'output', [])
+                if len(output_list) > 0 and output_list[0]:
+                    first_output = output_list[0]
+                    summary = get_attr(first_output, 'summary')
+                    if summary:
+                        summary_texts = []
+                        for s in summary:
+                            text = get_attr(s, 'text')
+                            if text:
+                                summary_texts.append(text)
+                        thoughts = {"summary": summary_texts}
+                    else:
+                        # Fallback for other tool outputs
+                        if hasattr(first_output, 'model_dump'):
+                            thoughts = first_output.model_dump()
+                        elif isinstance(first_output, dict):
+                            thoughts = first_output
                 
                 # Extract content from the second output block (or first if it's the only one with content)
-                if len(final_response.output) > 1 and final_response.output[1] and final_response.output[1].content:
-                    content = final_response.output[1].content[0].text
-                elif len(final_response.output) > 0 and final_response.output[0] and final_response.output[0].content:
-                     # Fallback if there's only one output block
-                    content = final_response.output[0].content[0].text
+                if len(output_list) > 1 and output_list[1]:
+                    second_output = output_list[1]
+                    second_content = get_attr(second_output, 'content')
+                    if second_content and len(second_content) > 0:
+                        content = get_attr(second_content[0], 'text', '')
+                
+                if not content and len(output_list) > 0 and output_list[0]:
+                    # Fallback if there's only one output block
+                    first_content = get_attr(output_list[0], 'content')
+                    if first_content and len(first_content) > 0:
+                        content = get_attr(first_content[0], 'text', '')
+                
+                # If content is still empty, try to extract from any output block
+                if not content:
+                    for output_item in output_list:
+                        if output_item:
+                            item_content = get_attr(output_item, 'content')
+                            if item_content:
+                                for content_block in item_content:
+                                    text = get_attr(content_block, 'text', '')
+                                    if text:
+                                        content = text
+                                        break
+                            if content:
+                                break
+                
+                # Final validation - log if we still have no content
+                if not content:
+                    observability = get_observability_service()
+                    observability.log(
+                        level="WARNING",
+                        event_type="empty_response_content",
+                        message="Could not extract content from aresponses API response",
+                        user_id=user_id,
+                        metadata={
+                            "model": model_string,
+                            "output_list_length": len(output_list),
+                            "output_structure": str(output_list)[:500]  # Truncate for logging
+                        }
+                    )
             else:
                 raise Exception("Polling for OpenAI Responses API timed out.")
 
