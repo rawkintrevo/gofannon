@@ -6,28 +6,54 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Container,
   Box,
   CssBaseline,
 } from '@mui/material';
-import config from '../config';
 import ProfileMenu from './ProfileMenu';
+import AnvilIcon from './AnvilIcon';
+import FloatingChat from './FloatingChat';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
-  const appName = config?.app?.name || 'Gofannon WebApp';
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       <AppBar
         position="fixed"
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        sx={{ 
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          bgcolor: '#18181b',
+          borderBottom: '1px solid #27272a',
+        }}
+        elevation={0}
       >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => navigate('/')}>
-            {appName}
-          </Typography>
+        <Toolbar sx={{ minHeight: '56px !important' }}>
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1.5, 
+              cursor: 'pointer',
+              '&:hover': { opacity: 0.9 }
+            }} 
+            onClick={() => navigate('/')}
+          >
+            <AnvilIcon size={28} color="#ffffff" />
+            <Typography 
+              variant="h6" 
+              noWrap 
+              component="div" 
+              sx={{ 
+                fontWeight: 600, 
+                letterSpacing: '-0.5px',
+                color: '#fff'
+              }}
+            >
+              Gofannon
+            </Typography>
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
           <ProfileMenu />
         </Toolbar>
       </AppBar>
@@ -35,15 +61,13 @@ const Layout = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          bgcolor: 'background.default',
-          p: 3,
+          bgcolor: '#f8f9fa',
+          pt: '56px', // Account for fixed AppBar
         }}
       >
-        <Toolbar />
-        <Container maxWidth="lg">
-          {children}
-        </Container>
+        {children}
       </Box>
+      <FloatingChat />
     </Box>
   );
 };

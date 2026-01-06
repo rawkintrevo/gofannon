@@ -1,4 +1,3 @@
-// webapp/packages/webui/src/pages/DemoAppsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,24 +7,27 @@ import {
   Paper,
   CircularProgress,
   Alert,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Container,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   IconButton,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Stack
+  Chip,
+  Tooltip,
 } from '@mui/material';
-import WebIcon from '@mui/icons-material/Web';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import demoService from '../services/demoService';
 
 const DemoAppsPage = () => {
@@ -43,7 +45,7 @@ const DemoAppsPage = () => {
         const savedApps = await demoService.getDemos();
         setApps(savedApps);
       } catch (err) {
-        setError('Failed to load saved demo apps.');
+        setError('Failed to load demo apps.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -75,14 +77,18 @@ const DemoAppsPage = () => {
     }
   };
   
-  const handleViewApp = (appId) => {
+  const handleViewApp = (appId, event) => {
+    event.stopPropagation();
     window.open(`/demos/${appId}`, '_blank');
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+    <Box sx={{ p: 3, maxWidth: 1200, margin: '0 auto' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <IconButton size="small" onClick={() => navigate('/')} sx={{ mr: 1 }}>
+          <ArrowBackIcon sx={{ fontSize: 20 }} />
+        </IconButton>
+        <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
           Demo Apps
         </Typography>
         <Button
@@ -90,67 +96,121 @@ const DemoAppsPage = () => {
           startIcon={<AddIcon />}
           onClick={() => navigate('/create-demo')}
         >
-          Create New Demo App
+          Create Demo
         </Button>
       </Box>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
       
-      <Paper sx={{ p: 3 }}>
-        {loading && <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>}
-        {error && <Alert severity="error">{error}</Alert>}
-        {!loading && !error && (
-          <List>
-            {apps.length === 0 ? (
-              <Typography color="text.secondary" textAlign="center">
-                You haven't created any demo apps yet.
+      <Paper sx={{ overflow: 'hidden' }}>
+        <TableContainer>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : apps.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Typography color="text.secondary" variant="body2">
+                No demo apps yet
               </Typography>
-            ) : (
-              apps.map((app, index) => (
-                <React.Fragment key={app._id}>
-                  <ListItem
-                    secondaryAction={
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={() => handleViewApp(app._id)}
-                        >
-                            View
-                        </Button>
-                        <IconButton edge="end" aria-label="edit" onClick={(e) => handleEdit(app._id, e)}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton edge="end" aria-label="delete" onClick={(e) => handleDeleteClick(app._id, app.name, e)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Stack>
-                    }
+              <Button 
+                size="small" 
+                onClick={() => navigate('/create-demo')}
+                sx={{ mt: 1 }}
+              >
+                Create your first demo
+              </Button>
+            </Box>
+          ) : (
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#fafafa' }}>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell>APIs</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {apps.map((app) => (
+                  <TableRow 
+                    key={app._id} 
+                    hover 
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/demos/${app._id}`)}
                   >
-                    <ListItemIcon><WebIcon /></ListItemIcon>
-                    <ListItemText primary={app.name} secondary={app.description || "No description"} />
-                  </ListItem>
-                  {index < apps.length - 1 && <Divider />}
-                </React.Fragment>
-              ))
-            )}
-          </List>
-        )}
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {app.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary" sx={{ 
+                        maxWidth: 300,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {app.description || 'No description'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={`${app.selectedApis?.length || 0} APIs`}
+                        size="small"
+                        sx={{ 
+                          bgcolor: '#f4f4f5', 
+                          color: '#71717a',
+                          fontWeight: 500,
+                          fontSize: '0.7rem'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+                      <Tooltip title="Open in new tab" arrow>
+                        <IconButton size="small" onClick={(e) => handleViewApp(app._id, e)}>
+                          <OpenInNewIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="View" arrow>
+                        <IconButton size="small" onClick={() => navigate(`/demos/${app._id}`)}>
+                          <VisibilityIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit" arrow>
+                        <IconButton size="small" onClick={(e) => handleEdit(app._id, e)}>
+                          <EditIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete" arrow>
+                        <IconButton size="small" onClick={(e) => handleDeleteClick(app._id, app.name, e)}>
+                          <DeleteIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TableContainer>
       </Paper>
       
       <Dialog open={deleteConfirmation.open} onClose={() => setDeleteConfirmation({ open: false, appId: null, appName: '' })}>
         <DialogTitle>Confirm Deletion</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to permanently delete the app "{deleteConfirmation.appName}"?
+            Are you sure you want to permanently delete "{deleteConfirmation.appName}"?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteConfirmation({ open: false, appId: null, appName: '' })}>Cancel</Button>
-          <Button onClick={handleConfirmDelete} color="error" autoFocus>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained">
             Delete
           </Button>
         </DialogActions>
       </Dialog>      
-    </Container>
+    </Box>
   );
 };
 

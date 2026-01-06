@@ -28,6 +28,8 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ApiIcon from '@mui/icons-material/Api';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import Chip from '@mui/material/Chip';
 
 
@@ -45,6 +47,10 @@ const CanvasScreen = () => {
     setAppName,
     description,
     setDescription,
+    loadFromSession,
+    loadFromServer,
+    clearDraft,
+    currentEditId,
   } = useDemoFlow();
 
   const navigate = useNavigate();
@@ -52,6 +58,7 @@ const CanvasScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [iframeSrcDoc, setIframeSrcDoc] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isEditLoading, setIsEditLoading] = useState(false);
   const [editLoaded, setEditLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState('canvas'); // 'canvas' or 'code'
@@ -70,40 +77,91 @@ const CanvasScreen = () => {
   const [isApiSelectionDialogOpen, setIsApiSelectionDialogOpen] = useState(false);
 
   const [generationThoughts, setGenerationThoughts] = useState(null);
+  
   // Effect to load demo for editing
   useEffect(() => {
     const editDemoId = searchParams.get('edit');
-    if (editDemoId && !editLoaded) {
-      const loadDemoForEditing = async () => {
-        setIsEditLoading(true);
-        setError(null);
-        try {
-          const demoData = await demoService.getDemo(editDemoId);
-          setSelectedApis(demoData.selectedApis);
-          setModelConfig(demoData.modelConfig);
-          setUserPrompt(demoData.userPrompt);
-          setGeneratedCode(demoData.generatedCode);
-          setAppName(demoData.name);
-          setDescription(demoData.description);
-          setEditLoaded(true);
-        } catch (err) {
-          setError(err.message || 'Failed to load demo for editing.');
-        } finally {
-          setIsEditLoading(false);
-        }
-      };
-      loadDemoForEditing();
-    } else {
-        setIsEditLoading(false);
+    
+    // If we already loaded this edit ID (from session or server), skip
+    if (editLoaded && currentEditId === editDemoId) {
+      setIsEditLoading(false);
+      return;
     }
-  }, [searchParams, editLoaded, setSelectedApis, setModelConfig, setUserPrompt, setGeneratedCode, setAppName, setDescription]);
+    
+    if (editDemoId) {
+      // Try to load from sessionStorage first (preserves unsaved changes)
+      const hasSessionData = loadFromSession(editDemoId);
+      
+      if (hasSessionData) {
+        console.log('[CanvasScreen] Loaded from session for editId:', editDemoId);
+        setEditLoaded(true);
+        setHasUnsavedChanges(true);
+        setIsEditLoading(false);
+      } else {
+        // No session data - fetch from server
+        const loadDemoForEditing = async () => {
+          setIsEditLoading(true);
+          setError(null);
+          try {
+            const demoData = await demoService.getDemo(editDemoId);
+            loadFromServer(demoData, editDemoId);
+            setEditLoaded(true);
+            setHasUnsavedChanges(false);
+          } catch (err) {
+            setError(err.message || 'Failed to load demo for editing.');
+          } finally {
+            setIsEditLoading(false);
+          }
+        };
+        loadDemoForEditing();
+      }
+    } else {
+      // New demo (not editing)
+      const hasSessionData = loadFromSession(null);
+      if (hasSessionData) {
+        setHasUnsavedChanges(true);
+      }
+      setIsEditLoading(false);
+      setEditLoaded(true);
+    }
+  }, [searchParams, editLoaded, currentEditId, loadFromSession, loadFromServer]);
+
+  // Handler to discard changes and reload from server
+  const handleDiscardChanges = async () => {
+    const editDemoId = searchParams.get('edit');
+    if (editDemoId) {
+      clearDraft(editDemoId);
+      setEditLoaded(false);
+      setIsEditLoading(true);
+      try {
+        const demoData = await demoService.getDemo(editDemoId);
+        loadFromServer(demoData, editDemoId);
+        setEditLoaded(true);
+        setHasUnsavedChanges(false);
+      } catch (err) {
+        setError(err.message || 'Failed to reload demo.');
+      } finally {
+        setIsEditLoading(false);
+      }
+    } else {
+      // New demo - just clear everything
+      clearDraft(null);
+      setUserPrompt('');
+      setGeneratedCode({ html: '', css: '', js: '' });
+      setSelectedApis([]);
+      setModelConfig(null);
+      setAppName('');
+      setDescription('');
+      setHasUnsavedChanges(false);
+    }
+  };
    
-  // Redirect if essential context data is missing (not in edit mode)
+  // Redirect if essential context data is missing (not in edit mode, and loading is complete)
   useEffect(() => {
-    if (!isEditLoading && !modelConfig && selectedApis.length === 0 && !searchParams.get('edit')) {
+    if (!isEditLoading && editLoaded && !modelConfig && selectedApis.length === 0 && !searchParams.get('edit') && !userPrompt) {
       navigate('/create-demo/select-apis');
     }
-  }, [modelConfig, selectedApis, navigate, isEditLoading, searchParams]);
+  }, [modelConfig, selectedApis, navigate, isEditLoading, searchParams, editLoaded, userPrompt]);
 
   // Effect to fetch providers on component mount and initialize model config dialog's local state
   useEffect(() => {
@@ -219,6 +277,7 @@ const CanvasScreen = () => {
       });
       setGeneratedCode(code);
       setGenerationThoughts(code.thoughts);
+      setHasUnsavedChanges(true);
       setActiveTab('canvas'); // Switch to canvas view after generation
     } catch (err) {
       setError(err.message || "Failed to generate code.");
@@ -254,16 +313,19 @@ const CanvasScreen = () => {
       model: localSelectedModel,
       parameters: localCurrentModelParams,
     });
+    setHasUnsavedChanges(true);
     setIsModelConfigOpen(false);
   };
   
   const handleSaveSelectedApis = (apis) => {
     setSelectedApis(apis);
+    setHasUnsavedChanges(true);
     setIsApiSelectionDialogOpen(false);
   };
 
   const handleCodeChange = (part, value) => {
     setGeneratedCode(prev => ({ ...prev, [part]: value }));
+    setHasUnsavedChanges(true);
   };
 
   const isModelSelected = localSelectedProvider && localSelectedModel;
@@ -278,9 +340,15 @@ const CanvasScreen = () => {
 
   return (
     <Paper sx={{ p: 3, height: '85vh', display: 'flex', flexDirection: 'column' }}>
-      <Typography variant="h5" component="h2" gutterBottom>
-        Create Demo App
-      </Typography>
+      {/* Header with back button */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <IconButton size="small" onClick={() => navigate(-1)} sx={{ mr: 1 }}>
+          <ArrowBackIcon sx={{ fontSize: 20 }} />
+        </IconButton>
+        <Typography variant="h5" component="h2">
+          Create Demo App
+        </Typography>
+      </Box>
 
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{mb: 2}}>{error}</Alert>}
 
@@ -333,10 +401,25 @@ const CanvasScreen = () => {
             rows={10}
             fullWidth
             value={userPrompt}
-            onChange={(e) => setUserPrompt(e.target.value)}
+            onChange={(e) => {
+              setUserPrompt(e.target.value);
+              setHasUnsavedChanges(true);
+            }}
             placeholder="e.g., 'Create a simple form with a text input and a button. When the button is clicked, call the 'my_api' API with the input text and display the result.'"
           />
           <Stack direction="row" spacing={2} justifyContent="flex-end">
+            {hasUnsavedChanges && (
+              <Tooltip title="Discard changes and reload from server">
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  onClick={handleDiscardChanges}
+                  startIcon={<RefreshIcon />}
+                >
+                  Discard Changes
+                </Button>
+              </Tooltip>
+            )}
             <Button
               variant="contained"
               onClick={handleGenerate}

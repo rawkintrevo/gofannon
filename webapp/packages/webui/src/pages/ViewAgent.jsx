@@ -99,6 +99,9 @@ const ViewAgent = () => {
   const isCreationFlow = !agentId;
   const hasCode = agent?.code && agent.code.trim() !== '';
 
+  // Session storage key for persisting edits
+  const sessionStorageKey = agentId ? `agent_edit_${agentId}` : 'agent_create_draft';
+
   // Track if initial load has been done for creation flow
   const initialLoadDone = React.useRef(false);
 
@@ -161,6 +164,13 @@ const ViewAgent = () => {
     }
   }, [toolsTabIndex, agentId]);
 
+  // Persist agent edits to sessionStorage when agent state changes
+  useEffect(() => {
+    if (agent && !loading) {
+      sessionStorage.setItem(sessionStorageKey, JSON.stringify(agent));
+    }
+  }, [agent, loading, sessionStorageKey]);
+
   const loadAgentData = useCallback(async () => {
     if (isCreationFlow && initialLoadDone.current) {
       return;
@@ -170,6 +180,23 @@ const ViewAgent = () => {
     setLoading(true);
     
     try {
+      // Check sessionStorage for unsaved edits first
+      const savedEdits = sessionStorage.getItem(sessionStorageKey);
+      if (savedEdits) {
+        try {
+          const parsed = JSON.parse(savedEdits);
+          setAgent(parsed);
+          if (isCreationFlow) {
+            initialLoadDone.current = true;
+          }
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.warn('Failed to parse saved edits from sessionStorage:', e);
+          sessionStorage.removeItem(sessionStorageKey);
+        }
+      }
+
       if (isCreationFlow) {
         setAgent({
           name: agentFlowContext.friendlyName || '',
@@ -206,7 +233,7 @@ const ViewAgent = () => {
     } finally {
       setLoading(false);
     }
-  }, [agentId, isCreationFlow]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agentId, isCreationFlow, sessionStorageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadAgentData();
@@ -268,6 +295,8 @@ const ViewAgent = () => {
       };
       await agentService.updateAgent(agentId, updatePayload);
       setSaveSuccess(true);
+      // Clear session storage since changes are now saved to database
+      sessionStorage.removeItem(sessionStorageKey);
     } catch (err) {
       setError(err.message || 'Failed to update agent.');
     } finally {

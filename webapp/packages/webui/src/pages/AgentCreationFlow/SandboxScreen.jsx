@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAgentFlow } from './AgentCreationFlowContext';
 import agentService from '../../services/agentService';
 import {
@@ -10,13 +10,16 @@ import {
   TextField,
   CircularProgress,
   Alert,
-  Divider
+  Divider,
+  IconButton,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import observabilityService from '../../services/observabilityService';
 
 const SandboxScreen = () => {
   const { agentId } = useParams();
+  const navigate = useNavigate();
   const agentFlowContext = useAgentFlow();
   
   // Local state for agent data (used when fetching by ID)
@@ -138,9 +141,15 @@ const SandboxScreen = () => {
 
   return (
     <Paper sx={{ p: 3, maxWidth: 800, margin: 'auto', mt: 4 }}>
-      <Typography variant="h5" component="h2" gutterBottom>
-        {agentId ? 'Agent Sandbox' : 'Screen 5: Sandbox'}
-      </Typography>
+      {/* Header with back button */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <IconButton size="small" onClick={() => navigate(-1)} sx={{ mr: 1 }}>
+          <ArrowBackIcon sx={{ fontSize: 20 }} />
+        </IconButton>
+        <Typography variant="h5" component="h2">
+          {agentId ? 'Agent Sandbox' : 'Screen 5: Sandbox'}
+        </Typography>
+      </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Test your agent by providing input and running the generated code.
       </Typography>

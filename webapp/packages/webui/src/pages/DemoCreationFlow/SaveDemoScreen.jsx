@@ -20,7 +20,7 @@ const SaveDemoScreen = () => {
   const editDemoId = searchParams.get('edit');  
   const demoFlowContext = useDemoFlow();
   
-  const { appName, setAppName, description, setDescription } = demoFlowContext;
+  const { appName, setAppName, description, setDescription, clearDraft } = demoFlowContext;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -50,7 +50,11 @@ const SaveDemoScreen = () => {
         await demoService.saveDemo(demoData);
       }
       setSuccess(true);
-      setTimeout(() => navigate('/demo-apps'), 1500);
+      // Clear session storage draft since save was successful
+      if (clearDraft) {
+        clearDraft(editDemoId || null);
+      }
+      setTimeout(() => navigate('/'), 1500);
     } catch (err) {
       setError(err.message || 'Failed to save demo app.');
     } finally {
