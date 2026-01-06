@@ -34,7 +34,7 @@ git clone https://github.com/The-AI-Alliance/gofannon.git
 cd gofannon/webapp/infra/docker
 docker-compose up --build
 ```
-For more information, see our [quickstart guide](https://github.com/The-AI-Alliance/gofannon/blob/main/docs/quickstart.md).
+For more information, see our [quickstart guide](https://github.com/The-AI-Alliance/gofannon/blob/main/docs/quickstart/README.md).
 
 ## 🏆🏆 Acknowledgments 🏆🏆
 
