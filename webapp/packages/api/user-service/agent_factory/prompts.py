@@ -83,7 +83,10 @@ how_to_use_swagger_tools = """
 You are also provided with a pre-initialized asynchronous HTTP client called `http_client` from the `httpx` library.
 You **MUST** use this client to make any HTTP requests to the APIs defined in the OpenAPI/Swagger specifications.
 
-**ALL HTTP calls are asynchronous and MUST use the `await` keyword.**
+**Important notes:**
+- The `http_client` is configured to automatically follow HTTP redirects.
+- Always prefer `https://` URLs over `http://` URLs when available.
+- **ALL HTTP calls are asynchronous and MUST use the `await` keyword.**
 
 Here is an example of how to use `http_client` to make a GET request:
 
@@ -155,6 +158,14 @@ A client for calling other Gofannon agents named `gofannon_client` is also avail
 A dictionary of MCP clients named `mcpc` is already initialized for you like this:
 `mcpc = {{ url : RemoteMCPClient(remote_url = url) for url in tools.keys() }}`
 You can use it to call tools as described in the documentation.
+
+**Available in the Sandbox:**
+- `mcpc` - Dictionary of MCP clients for calling external tools
+- `http_client` - Async HTTP client (httpx) for REST API calls
+- `litellm` - For calling language models via `await litellm.acompletion()`
+- `gofannon_client` - For calling other Gofannon agents
+- `asyncio`, `json`, `re` - Standard Python libraries
+- Additional tools may be documented above (e.g., `web_search`)
 
 **Input Schema:**
 ```json
