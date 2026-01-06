@@ -137,7 +137,7 @@ const DemoAppsPage = () => {
                     key={app._id} 
                     hover 
                     sx={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/demos/${app._id}`)}
+                    onClick={(e) => handleViewApp(app._id, e)}
                   >
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -173,7 +173,7 @@ const DemoAppsPage = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="View" arrow>
-                        <IconButton size="small" onClick={() => navigate(`/demos/${app._id}`)}>
+                        <IconButton size="small" onClick={(e) => handleViewApp(app._id, e)}>
                           <VisibilityIcon sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Tooltip>

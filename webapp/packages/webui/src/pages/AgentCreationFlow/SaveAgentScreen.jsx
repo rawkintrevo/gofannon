@@ -75,7 +75,7 @@ const SaveAgentScreen = () => {
       await agentService.saveAgent(agentData);
       setSuccess(true);
       setTimeout(() => {
-        navigate('/agents'); // Navigate to agents list after successful save
+        navigate('/');
       }, 1500);
     } catch (err) {
       setError(err.message || 'Failed to save agent.');
