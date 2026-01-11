@@ -110,6 +110,13 @@ db = get_database_service(settings)
 doc = db.get("agents", "agent-id")
 ```
 
+### Note
+
+The factory uses a singleton pattern (`_db_instance`). This means:
+- First call creates the instance
+- Subsequent calls return the same instance
+- **Changing settings requires application restart**
+
 ## Common Tasks
 
 ### Switch Database Providers
