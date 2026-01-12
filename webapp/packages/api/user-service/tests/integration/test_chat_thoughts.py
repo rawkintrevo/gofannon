@@ -1,3 +1,4 @@
+import os
 import time
 from unittest.mock import Mock
 
@@ -6,6 +7,7 @@ from fastapi.testclient import TestClient
 
 import dependencies as dependencies_module
 from app_factory import create_app
+from config.provider_config import PROVIDER_CONFIG
 from services.database_service.memory import MemoryDBService
 
 
@@ -25,34 +27,25 @@ def _wait_for_ticket(client: TestClient, ticket_id: str, attempts: int = 5) -> d
 
 
 @pytest.mark.parametrize(
-    ("provider", "model", "expected_thoughts"),
+    ("provider", "model"),
     [
-        ("openai", "gpt-5", {"summary": ["openai thoughts"]}),
-        ("anthropic", "claude-opus-4-5-20251101", {"anthropic_thoughts": ["thinking"]}),
-        ("gemini", "gemini-2.5-pro", {"reasoning": "gemini thoughts"}),
+        ("openai", "gpt-5"),
+        ("anthropic", "claude-opus-4-5-20251101"),
+        ("gemini", "gemini-2.5-pro"),
     ],
 )
-def test_chat_returns_thoughts_for_provider(monkeypatch, provider, model, expected_thoughts):
+def test_chat_returns_thoughts_for_provider(monkeypatch, provider, model):
+    api_key_env_var = PROVIDER_CONFIG.get(provider, {}).get("api_key_env_var")
+    if api_key_env_var and not os.getenv(api_key_env_var):
+        pytest.skip(f"Missing {api_key_env_var} for {provider} integration test.")
+
     memory_db = MemoryDBService()
     fake_logger = Mock()
     fake_logger.log = Mock()
     fake_logger.log_exception = Mock()
 
-    async def fake_call_llm(
-        provider: str,
-        model: str,
-        messages,
-        parameters,
-        tools=None,
-        user_service=None,
-        user_id=None,
-        user_basic_info=None,
-    ):
-        return f"{provider} response", expected_thoughts
-
     monkeypatch.setattr(dependencies_module, "get_database_service", lambda settings: memory_db)
     monkeypatch.setattr(dependencies_module, "get_observability_service", lambda: fake_logger)
-    monkeypatch.setattr(dependencies_module, "call_llm", fake_call_llm)
 
     app = create_app()
     client = TestClient(app)
@@ -63,7 +56,7 @@ def test_chat_returns_thoughts_for_provider(monkeypatch, provider, model, expect
             "messages": [{"role": "user", "content": "Hello"}],
             "provider": provider,
             "model": model,
-            "parameters": {},
+            "parameters": {"reasoning_effort": "low"},
         },
     )
     assert response.status_code == 200
@@ -72,4 +65,5 @@ def test_chat_returns_thoughts_for_provider(monkeypatch, provider, model, expect
     ticket_data = _wait_for_ticket(client, ticket_id)
 
     assert ticket_data.get("status") == "completed"
-    assert ticket_data["result"]["thoughts"] == expected_thoughts
+    thoughts = ticket_data["result"].get("thoughts")
+    assert thoughts
