@@ -21,9 +21,7 @@ import AdminPanel from '../pages/AdminPanel';
 // import extendRoutes from '../extensions/routes/routeExtensions';
 
 const isAdminPanelEnabled = () => {
-  const envValue = import.meta.env.VITE_ADMIN_PANEL_ENABLED
-    ?? (typeof process !== 'undefined' ? process.env.ADMIN_PANEL_ENABLED : undefined)
-    ?? 'false';
+  const envValue = import.meta.env.VITE_ADMIN_PANEL_ENABLED ?? 'false';
   const raw = envValue.toString();
   return raw.toLowerCase() === 'true';
 };

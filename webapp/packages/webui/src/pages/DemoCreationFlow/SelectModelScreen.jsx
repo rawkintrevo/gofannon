@@ -1,7 +1,7 @@
 // webapp/packages/webui/src/pages/DemoCreationFlow/SelectModelScreen.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDemoFlow } from './DemoCreationFlowContext';
+import { useDemoFlow } from './DemoCreationFlowContextValue';
 import chatService from '../../services/chatService';
 import {
   Paper,

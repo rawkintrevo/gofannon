@@ -1,15 +1,6 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-
-export const AgentCreationFlowContext = createContext();
-
-export const useAgentFlow = () => {
-    const context = useContext(AgentCreationFlowContext);
-    if (context === undefined) {
-        throw new Error('useAgentFlow must be used within an AgentCreationFlowProvider');
-    }
-    return context;
-};
+import { AgentCreationFlowContext } from './AgentCreationFlowContextValue';
 
 export const AgentCreationFlowProvider = ({ children }) => {
     const [tools, setTools] = useState({}); // { "url": [] }

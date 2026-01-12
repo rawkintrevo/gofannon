@@ -59,7 +59,7 @@ const DeployedApisPage = () => {
                 No agents are currently deployed as APIs.
               </Typography>
             ) : (
-              apis.map((api, index) => (
+              apis.map((api) => (
                 <Accordion key={api.agentId}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <ListItemIcon sx={{mr: 2}}><ApiIcon /></ListItemIcon>

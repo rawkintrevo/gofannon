@@ -1,6 +1,5 @@
 // webapp/packages/webui/src/services/observabilityService.js
 import apiClient from './apiClient';
-import authService from './authService';
 
 class ObservabilityService {
   /**
