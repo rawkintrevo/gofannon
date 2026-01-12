@@ -30,6 +30,11 @@ class Settings:
     COUCHDB_URL: str | None = os.getenv("COUCHDB_URL")
     COUCHDB_USER: str | None = os.getenv("COUCHDB_USER")
     COUCHDB_PASSWORD: str | None = os.getenv("COUCHDB_PASSWORD")
+    
+    # DynamoDB Settings
+    DYNAMODB_REGION: str | None = os.getenv("DYNAMODB_REGION")
+    DYNAMODB_ENDPOINT_URL: str | None = os.getenv("DYNAMODB_ENDPOINT_URL")
+
     # AWS CloudWatch Logging Settings
     CLOUDWATCH_LOG_GROUP_NAME: str | None = os.getenv("CLOUDWATCH_LOG_GROUP_NAME")
     # Google Cloud Settings
