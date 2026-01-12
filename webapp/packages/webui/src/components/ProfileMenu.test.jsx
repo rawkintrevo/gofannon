@@ -6,7 +6,7 @@ import ProfileMenu from './ProfileMenu';
 
 // Mock AuthContext
 const mockLogout = vi.fn();
-vi.mock('../contexts/AuthContext', () => ({
+vi.mock('../contexts/AuthContextValue', () => ({
   useAuth: () => ({
     logout: mockLogout,
   }),

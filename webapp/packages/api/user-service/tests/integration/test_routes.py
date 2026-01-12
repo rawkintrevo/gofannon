@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 
 from app_factory import create_app
@@ -209,5 +209,50 @@ def test_log_client_enriches_metadata_with_dependency_overrides():
         assert metadata["extra"] == "value"
         assert metadata["client_host"] == "testclient"
         assert metadata["user_agent"] == "TestAgent/1.0"
+    finally:
+        app.dependency_overrides = {}
+
+
+def test_session_config_routes_create_read_delete():
+    app = create_app()
+    storage = {}
+
+    class FakeDb:
+        def get(self, collection, key):
+            if collection != "sessions" or key not in storage:
+                raise HTTPException(status_code=404, detail="Not found")
+            return storage[key]
+
+        def save(self, collection, key, data):
+            storage[key] = data
+            return {"rev": "1-test"}
+
+        def delete(self, collection, key):
+            storage.pop(key, None)
+
+    fake_db = FakeDb()
+    app.dependency_overrides[get_db] = lambda: fake_db
+
+    client = TestClient(app)
+    try:
+        payload = {
+            "provider": "openai",
+            "model": "gpt-4.1-nano",
+            "parameters": {"temperature": 0.2},
+        }
+        response = client.post("/sessions/session-1/config", json=payload)
+        assert response.status_code == 200
+        assert response.json()["session_id"] == "session-1"
+
+        response = client.get("/sessions/session-1/config")
+        assert response.status_code == 200
+        config_payload = response.json()
+        assert config_payload["provider"] == payload["provider"]
+        assert config_payload["model"] == payload["model"]
+        assert config_payload["parameters"] == payload["parameters"]
+
+        response = client.delete("/sessions/session-1")
+        assert response.status_code == 200
+        assert response.json()["message"] == "Session deleted"
     finally:
         app.dependency_overrides = {}
