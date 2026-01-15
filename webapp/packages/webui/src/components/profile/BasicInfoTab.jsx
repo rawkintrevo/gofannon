@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Typography, Paper, Stack, Divider } from '@mui/material';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextValue';
 
 const InfoRow = ({ label, value }) => (
   <Stack direction="row" justifyContent="space-between" alignItems="center" py={1}>

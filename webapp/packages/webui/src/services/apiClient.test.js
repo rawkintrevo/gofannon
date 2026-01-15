@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './apiClient';
 import authService from './authService';
-import config from '../config';
 
 vi.mock('./authService', () => ({
   default: {
@@ -17,7 +16,7 @@ vi.mock('../config', () => ({
   },
 }));
 
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 describe('apiClient', () => {
   beforeEach(() => {
@@ -28,7 +27,7 @@ describe('apiClient', () => {
   describe('request', () => {
     it('makes a successful GET request', async () => {
       const mockData = { id: 1, name: 'Test' };
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockData,
       });
@@ -37,7 +36,7 @@ describe('apiClient', () => {
       const result = await apiClient.request('/test', { method: 'GET' });
 
       expect(result).toEqual(mockData);
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/test',
         expect.objectContaining({
           method: 'GET',
@@ -54,14 +53,14 @@ describe('apiClient', () => {
         getIdToken: vi.fn().mockResolvedValue('mock-token'),
       };
       authService.getCurrentUser.mockReturnValue(mockUser);
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await apiClient.request('/test');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/test',
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -73,14 +72,14 @@ describe('apiClient', () => {
 
     it('works without auth token when user is not authenticated', async () => {
       authService.getCurrentUser.mockReturnValue(null);
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await apiClient.request('/test');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/test',
         expect.objectContaining({
           headers: expect.not.objectContaining({
@@ -91,7 +90,7 @@ describe('apiClient', () => {
     });
 
     it('throws error on failed request', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
         json: async () => ({ detail: 'Not found' }),
@@ -102,7 +101,7 @@ describe('apiClient', () => {
     });
 
     it('handles response without detail field', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
         json: async () => ({}),
@@ -115,7 +114,7 @@ describe('apiClient', () => {
     });
 
     it('gracefully handles empty response body', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => {
           throw new Error('No JSON');
@@ -129,7 +128,7 @@ describe('apiClient', () => {
     });
 
     it('includes custom headers', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
@@ -139,7 +138,7 @@ describe('apiClient', () => {
         headers: { 'X-Custom': 'value' },
       });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/test',
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -152,7 +151,7 @@ describe('apiClient', () => {
 
   describe('get', () => {
     it('makes GET request', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: 'test' }),
       });
@@ -161,7 +160,7 @@ describe('apiClient', () => {
       const result = await apiClient.get('/users');
 
       expect(result).toEqual({ data: 'test' });
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/users',
         expect.objectContaining({ method: 'GET' })
       );
@@ -170,7 +169,7 @@ describe('apiClient', () => {
 
   describe('post', () => {
     it('makes POST request with body', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ id: 1 }),
       });
@@ -180,7 +179,7 @@ describe('apiClient', () => {
       const result = await apiClient.post('/users', body);
 
       expect(result).toEqual({ id: 1 });
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/users',
         expect.objectContaining({
           method: 'POST',
@@ -192,7 +191,7 @@ describe('apiClient', () => {
 
   describe('put', () => {
     it('makes PUT request with body', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ updated: true }),
       });
@@ -202,7 +201,7 @@ describe('apiClient', () => {
       const result = await apiClient.put('/users/1', body);
 
       expect(result).toEqual({ updated: true });
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/users/1',
         expect.objectContaining({
           method: 'PUT',
@@ -214,7 +213,7 @@ describe('apiClient', () => {
 
   describe('delete', () => {
     it('makes DELETE request', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ deleted: true }),
       });
@@ -223,7 +222,7 @@ describe('apiClient', () => {
       const result = await apiClient.delete('/users/1');
 
       expect(result).toEqual({ deleted: true });
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         'http://localhost:8000/users/1',
         expect.objectContaining({ method: 'DELETE' })
       );
@@ -236,7 +235,7 @@ describe('apiClient', () => {
         getIdToken: vi.fn().mockRejectedValue(new Error('Token error')),
       };
       authService.getCurrentUser.mockReturnValue(mockUser);
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
@@ -248,11 +247,11 @@ describe('apiClient', () => {
         expect.any(Error)
       );
       // Should still make request without token
-      expect(global.fetch).toHaveBeenCalled();
+      expect(globalThis.fetch).toHaveBeenCalled();
     });
 
     it('logs API errors to console', async () => {
-      global.fetch.mockResolvedValueOnce({
+      globalThis.fetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
         json: async () => ({ detail: 'Bad request' }),

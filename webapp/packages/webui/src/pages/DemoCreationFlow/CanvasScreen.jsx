@@ -1,11 +1,10 @@
 // webapp/packages/webui/src/pages/DemoCreationFlow/CanvasScreen.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useDemoFlow } from './DemoCreationFlowContext';
+import { useDemoFlow } from './DemoCreationFlowContextValue';
 import demoService from '../../services/demoService';
 import config from '../../config';
 import chatService from '../../services/chatService'; // Import chatService for getProviders
-import agentService from '../../services/agentService'; // Import agentService for getDeployments
 import ModelConfigDialog from '../../components/ModelConfigDialog'; // Reused
 import DemoApiSelectionDialog from './DemoApiSelectionDialog'; // New Component
 
@@ -43,10 +42,6 @@ const CanvasScreen = () => {
     setUserPrompt,
     generatedCode,
     setGeneratedCode,
-    appName,
-    setAppName,
-    description,
-    setDescription,
     loadFromSession,
     loadFromServer,
     clearDraft,
@@ -150,8 +145,6 @@ const CanvasScreen = () => {
       setGeneratedCode({ html: '', css: '', js: '' });
       setSelectedApis([]);
       setModelConfig(null);
-      setAppName('');
-      setDescription('');
       setHasUnsavedChanges(false);
     }
   };

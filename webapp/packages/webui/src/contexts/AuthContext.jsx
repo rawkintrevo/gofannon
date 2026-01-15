@@ -1,17 +1,8 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import authService from '../services/authService';
 import observabilityService from '../services/observabilityService';
-
-export const AuthContext = createContext();
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
-};
+import { AuthContext } from './AuthContextValue';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -40,12 +31,26 @@ export const AuthProvider = ({ children }) => {
     try {
       const loggedInUser = await loginFn(...args);
       setUser(loggedInUser);
-      observabilityService.log({ eventType: 'user-action', message: 'User logged in successfully.', metadata: { email } });
+      observabilityService.log({ 
+        eventType: 'user-action', 
+        message: 'User logged in successfully.', 
+        metadata: { email: loggedInUser?.email } 
+      });
       return loggedInUser;
     } catch (e) {
       console.error("Login failed:", e);
       setError(e.message || 'Login failed. Please check your credentials.');
-      observabilityService.log({ eventType: 'user-action', message: 'User login failed.', level: 'WARN', metadata: { email, error: e.message } });
+      
+      // Attempt to extract email from args safely
+      const loginArgs = args[0] || {};
+      const emailAttempt = loginArgs.email || (typeof loginArgs === 'string' ? loginArgs : 'unknown');
+
+      observabilityService.log({ 
+        eventType: 'user-action', 
+        message: 'User login failed.', 
+        level: 'WARN', 
+        metadata: { email: emailAttempt, error: e.message } 
+      });
       setUser(null);
     } finally {
       setLoading(false);

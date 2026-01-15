@@ -1,7 +1,7 @@
-import React, { useContext, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import config from './config';
-import { AuthContext } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContextValue';
 import { useLocation } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import observabilityService from './services/observabilityService';
@@ -12,7 +12,7 @@ import { loadRoutesConfig } from './config/routesConfig';
 
 const RouteChangeTracker = () => {
   const location = useLocation();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   console.log("App.jsx")
   useEffect(() => {
     observabilityService.log({
@@ -29,7 +29,7 @@ const RouteChangeTracker = () => {
 };
 
 function PrivateRoute({ children }) {
-  const { user, loading } = useContext(AuthContext);
+  const { user, loading } = useAuth();
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>

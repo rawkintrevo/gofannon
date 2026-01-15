@@ -63,7 +63,6 @@ describe('ActionCard', () => {
     render(<ActionCard {...defaultProps} title="Very Long Title That Should Not Wrap" />);
 
     const title = screen.getByText('Very Long Title That Should Not Wrap');
-    const parentBox = title.parentElement;
 
     expect(title).toHaveStyle({ overflow: 'hidden' });
   });

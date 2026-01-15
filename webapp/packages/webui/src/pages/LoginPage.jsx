@@ -14,8 +14,8 @@ import {
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
-import { useAuth } from '../contexts/AuthContext';
-import { useConfig } from '../contexts/ConfigContext';
+import { useAuth } from '../contexts/AuthContextValue';
+import { useConfig } from '../contexts/ConfigContextValue';
 import AnvilIcon from '../components/AnvilIcon';
 
 const socialProviderDetails = {

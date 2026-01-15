@@ -48,7 +48,7 @@ import AddIcon from '@mui/icons-material/Add';
 import BuildIcon from '@mui/icons-material/Build';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 
-import { useAgentFlow } from './AgentCreationFlow/AgentCreationFlowContext';
+import { useAgentFlow } from './AgentCreationFlow/AgentCreationFlowContextValue';
 import agentService from '../services/agentService';
 import chatService from '../services/chatService';
 import CodeEditor from '../components/CodeEditor';
@@ -112,7 +112,7 @@ const ViewAgent = () => {
             try {
                 const status = await agentService.getDeployment(agentId);
                 setDeployment(status);
-            } catch (err) {
+            } catch {
                 const deploymentError = 'Could not fetch deployment status.';
                 setError(prev => prev ? `${prev}\n${deploymentError}` : deploymentError);
             }
@@ -431,7 +431,7 @@ const ViewAgent = () => {
     }
     try {
       new URL(currentToolUrl);
-    } catch (e) {
+    } catch {
       setError('Invalid URL format.');
       return;
     }

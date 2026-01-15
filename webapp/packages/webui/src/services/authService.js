@@ -106,7 +106,7 @@ const firebaseAuth = {
 // --- Amplify/Cognito Implementation (Placeholder) ---
 const cognitoAuth = {
   // You would import Amplify and implement these methods
-  login: async ({ username, password }) => {
+  login: async () => {
     // await Auth.signIn(username, password); ...
     throw new Error('Cognito Auth not implemented');
   },

@@ -1,18 +1,9 @@
 // webapp/packages/webui/src/pages/DemoCreationFlow/DemoCreationFlowContext.jsx
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
-
-export const DemoCreationFlowContext = createContext();
+import { DemoCreationFlowContext } from './DemoCreationFlowContextValue';
 
 const getSessionKey = (editId) => editId ? `demo_edit_${editId}` : 'demo_create_draft';
-
-export const useDemoFlow = () => {
-    const context = useContext(DemoCreationFlowContext);
-    if (context === undefined) {
-        throw new Error('useDemoFlow must be used within a DemoCreationFlowProvider');
-    }
-    return context;
-};
 
 export const DemoCreationFlowProvider = ({ children }) => {
     const [selectedApis, setSelectedApis] = useState([]);
