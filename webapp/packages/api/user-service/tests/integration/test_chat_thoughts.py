@@ -1,0 +1,69 @@
+import os
+import time
+from unittest.mock import Mock
+
+import pytest
+from fastapi.testclient import TestClient
+
+import dependencies as dependencies_module
+from app_factory import create_app
+from config.provider_config import PROVIDER_CONFIG
+from services.database_service.memory import MemoryDBService
+
+
+pytestmark = pytest.mark.integration
+
+
+def _wait_for_ticket(client: TestClient, ticket_id: str, attempts: int = 5) -> dict:
+    response_data = None
+    for _ in range(attempts):
+        response = client.get(f"/chat/{ticket_id}")
+        if response.status_code == 200:
+            response_data = response.json()
+            if response_data.get("status") == "completed":
+                return response_data
+        time.sleep(0.01)
+    return response_data or {}
+
+
+@pytest.mark.parametrize(
+    ("provider", "model"),
+    [
+        ("openai", "gpt-5"),
+        ("anthropic", "claude-opus-4-5-20251101"),
+        ("gemini", "gemini-2.5-pro"),
+    ],
+)
+def test_chat_returns_thoughts_for_provider(monkeypatch, provider, model):
+    api_key_env_var = PROVIDER_CONFIG.get(provider, {}).get("api_key_env_var")
+    if api_key_env_var and not os.getenv(api_key_env_var):
+        pytest.skip(f"Missing {api_key_env_var} for {provider} integration test.")
+
+    memory_db = MemoryDBService()
+    fake_logger = Mock()
+    fake_logger.log = Mock()
+    fake_logger.log_exception = Mock()
+
+    monkeypatch.setattr(dependencies_module, "get_database_service", lambda settings: memory_db)
+    monkeypatch.setattr(dependencies_module, "get_observability_service", lambda: fake_logger)
+
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.post(
+        "/chat",
+        json={
+            "messages": [{"role": "user", "content": "Hello"}],
+            "provider": provider,
+            "model": model,
+            "parameters": {"reasoning_effort": "low"},
+        },
+    )
+    assert response.status_code == 200
+    ticket_id = response.json()["ticket_id"]
+
+    ticket_data = _wait_for_ticket(client, ticket_id)
+
+    assert ticket_data.get("status") == "completed"
+    thoughts = ticket_data["result"].get("thoughts")
+    assert thoughts

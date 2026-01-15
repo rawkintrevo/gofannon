@@ -25,6 +25,12 @@ models = {
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
             },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
+            },
             "max_tokens": {
                 "type": "integer",
                 "default": 8192,
@@ -52,6 +58,12 @@ models = {
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
             },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
+            },
             "max_tokens": {
                 "type": "integer",
                 "default": 8192,
@@ -78,6 +90,12 @@ models = {
                 "max": 1.0,
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
+            },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
             },
             "max_tokens": {
                 "type": "integer",
@@ -110,6 +128,12 @@ models = {
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
             },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
+            },
             "max_tokens": {
                 "type": "integer",
                 "default": 8192,
@@ -141,6 +165,12 @@ models = {
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
             },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
+            },
             "max_tokens": {
                 "type": "integer",
                 "default": 8192,
@@ -167,6 +197,12 @@ models = {
                 "max": 1.0,
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
+            },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
             },
             "max_tokens": {
                 "type": "integer",
@@ -199,6 +235,12 @@ models = {
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
             },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
+            },
             "max_tokens": {
                 "type": "integer",
                 "default": 8192,
@@ -230,6 +272,12 @@ models = {
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
             },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
+            },
             "max_tokens": {
                 "type": "integer",
                 "default": 8192,
@@ -257,6 +305,12 @@ models = {
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
             },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
+            },
             "max_tokens": {
                 "type": "integer",
                 "default": 8192,
@@ -283,6 +337,12 @@ models = {
                 "max": 1.0,
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
+            },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
             },
             "max_tokens": {
                 "type": "integer",
@@ -314,6 +374,12 @@ models = {
                 "max": 1.0,
                 "description": "Nucleus sampling (0.1=conservative, 0.95=diverse)",
                 "mutually_exclusive_with": ["temperature"]
+            },
+            "reasoning_effort": {
+                "type": "choice",
+                "default": "disable",
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation"
             },
             "max_tokens": {
                 "type": "integer",
