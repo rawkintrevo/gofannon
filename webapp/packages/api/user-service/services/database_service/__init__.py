@@ -46,10 +46,10 @@ def get_database_service(settings) -> DatabaseService:
             _db_instance = FirestoreDBService()
         elif settings.DATABASE_PROVIDER == "dynamodb":
             # Get DynamoDB configuration from settings
-            region_name = getattr(settings, 'DYNAMODB_REGION', None)
-            endpoint_url = getattr(settings, 'DYNAMODB_ENDPOINT_URL', None)
-            aws_access_key_id = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
-            aws_secret_access_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
+            region_name = settings.DYNAMODB_REGION
+            endpoint_url = settings.DYNAMODB_ENDPOINT_URL
+            aws_access_key_id = settings.AWS_ACCESS_KEY_ID
+            aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY
 
             _db_instance = DynamoDBService(
                 region_name=region_name,
