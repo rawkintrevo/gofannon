@@ -56,7 +56,7 @@ jobs:
 
       - name: Start services with Docker Compose
         working-directory: ./webapp/infra/docker
-        run: docker-compose up -d --build
+        run: docker compose up -d --build
 
       - name: Wait for services to be healthy
         run: |
@@ -98,18 +98,18 @@ jobs:
         working-directory: ./webapp/infra/docker
         run: |
           echo "=== API Logs ==="
-          docker-compose logs api
+          docker compose logs api
           echo "=== WebUI Logs ==="
-          docker-compose logs webui
+          docker compose logs webui
           echo "=== CouchDB Logs ==="
-          docker-compose logs couchdb
+          docker compose logs couchdb
           echo "=== MinIO Logs ==="
-          docker-compose logs minio
+          docker compose logs minio
 
       - name: Stop services
         if: always()
         working-directory: ./webapp/infra/docker
-        run: docker-compose down -v
+        run: docker compose down -v
 
   e2e-tests:
     name: End-to-End Tests
@@ -162,7 +162,7 @@ jobs:
 
       - name: Start services with Docker Compose
         working-directory: ./webapp/infra/docker
-        run: docker-compose up -d --build
+        run: docker compose up -d --build
 
       - name: Wait for services to be healthy
         run: |
@@ -194,14 +194,14 @@ jobs:
         working-directory: ./webapp/infra/docker
         run: |
           echo "=== API Logs ==="
-          docker-compose logs api
+          docker compose logs api
           echo "=== WebUI Logs ==="
-          docker-compose logs webui
+          docker compose logs webui
 
       - name: Stop services
         if: always()
         working-directory: ./webapp/infra/docker
-        run: docker-compose down -v
+        run: docker compose down -v
 
   notify-on-failure:
     name: Notify on Failure
