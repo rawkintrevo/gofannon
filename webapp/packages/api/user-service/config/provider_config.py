@@ -1,6 +1,7 @@
 from .anthropic import models as anthropic_models
 from .gemini import models as gemini_models
 from .openai import models as openai_models
+from .perplexity import models as perplexity_models
 PROVIDER_CONFIG = {
     "openai": {
         "api_key_env_var": "OPENAI_API_KEY",
@@ -13,6 +14,10 @@ PROVIDER_CONFIG = {
     "anthropic": {
         "api_key_env_var": "ANTHROPIC_API_KEY",
         "models": anthropic_models,
+    },
+    "perplexity": {
+        "api_key_env_var": "PERPLEXITYAI_API_KEY",
+        "models": perplexity_models,
     },
     "ollama": {
         "models": {
