@@ -4,16 +4,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import asyncio
-from litellm import acompletion, ModelResponse
-import litellm
 
-from services.litellm_logger import ensure_litellm_logging
-
-ensure_litellm_logging()
-
-# Configure litellm
-litellm.drop_params = True
-litellm.set_verbose = False
+from services.llm_service import call_llm, stream_llm
 
 class ChatService:
     def __init__(self, storage_dir: str = "/tmp/chat_tickets"):
@@ -63,43 +55,55 @@ class ChatService:
     ):
         """Process chat completion asynchronously"""
         ticket_path = self.storage_dir / f"{ticket_id}.json"
-        
+
         try:
-            # Call LiteLLM
-            response = await acompletion(
-                model=model,
+            # Parse provider/model format
+            if "/" in model:
+                provider, model_name = model.split("/", 1)
+            else:
+                # Default to openai if no provider specified
+                provider = "openai"
+                model_name = model
+
+            # Call LLM through the centralized service
+            content, thoughts = await call_llm(
+                provider=provider,
+                model=model_name,
                 messages=messages,
-                **config
+                parameters=config,
+                user_service=None,  # Chat service doesn't track user costs
+                user_id=None,
             )
-            
+
             # Update ticket with response
             with open(ticket_path, 'r') as f:
                 ticket_data = json.load(f)
-            
+
             ticket_data["status"] = "completed"
             ticket_data["response"] = {
-                "content": response.choices[0].message.content,
-                "model": response.model,
-                "usage": response.usage.dict() if response.usage else None,
-                "finish_reason": response.choices[0].finish_reason
+                "content": content,
+                "model": model,
+                "usage": None,  # Usage tracking handled by llm_service
+                "finish_reason": "stop",
+                "thoughts": thoughts
             }
             ticket_data["completed_at"] = datetime.utcnow().isoformat()
-            
+
             with open(ticket_path, 'w') as f:
                 json.dump(ticket_data, f)
-                
+
         except Exception as e:
             # Update ticket with error
             with open(ticket_path, 'r') as f:
                 ticket_data = json.load(f)
-            
+
             ticket_data["status"] = "failed"
             ticket_data["error"] = str(e)
             ticket_data["completed_at"] = datetime.utcnow().isoformat()
-            
+
             with open(ticket_path, 'w') as f:
                 json.dump(ticket_data, f)
-        
+
         finally:
             # Clean up task reference
             if ticket_id in self.active_tasks:
@@ -124,26 +128,34 @@ class ChatService:
     ):
         """Stream chat completion responses"""
         try:
-            # For streaming, we'll use the sync version with stream=True
-            response = await acompletion(
-                model=model,
+            # Parse provider/model format
+            if "/" in model:
+                provider, model_name = model.split("/", 1)
+            else:
+                # Default to openai if no provider specified
+                provider = "openai"
+                model_name = model
+
+            # Stream through the centralized service
+            async for chunk in stream_llm(
+                provider=provider,
+                model=model_name,
                 messages=messages,
-                stream=True,
-                **config
-            )
-            
-            async for chunk in response:
+                parameters=config,
+                user_service=None,  # Chat service doesn't track user costs
+                user_id=None,
+            ):
                 if chunk.choices[0].delta.content:
                     yield {
                         "type": "content",
                         "data": chunk.choices[0].delta.content
                     }
-            
+
             yield {
                 "type": "done",
                 "data": None
             }
-            
+
         except Exception as e:
             yield {
                 "type": "error",

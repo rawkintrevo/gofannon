@@ -5,8 +5,7 @@ import json
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -14,30 +13,6 @@ from services.chat_service import ChatService
 
 
 pytestmark = pytest.mark.unit
-
-
-class _DummyMessage:
-    def __init__(self, content: str):
-        self.content = content
-        self.tool_calls = None
-
-
-class _DummyChoice:
-    def __init__(self, message, finish_reason="stop"):
-        self.message = message
-        self.finish_reason = finish_reason
-
-
-class _DummyUsage:
-    def dict(self):
-        return {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
-
-
-class _DummyResponse:
-    def __init__(self, content: str, model: str = "gpt-3.5-turbo"):
-        self.choices = [_DummyChoice(_DummyMessage(content))]
-        self.model = model
-        self.usage = _DummyUsage()
 
 
 @pytest.fixture
@@ -57,12 +32,12 @@ def chat_service(temp_storage):
 async def test_create_chat_ticket(chat_service, temp_storage):
     """Test creating a chat ticket."""
     messages = [{"role": "user", "content": "Hello"}]
-    model = "gpt-3.5-turbo"
+    model = "openai/gpt-3.5-turbo"
     config = {"temperature": 0.7}
     session_id = "test-session"
 
-    with patch("services.chat_service.acompletion", new_callable=AsyncMock) as mock_acompletion:
-        mock_acompletion.return_value = _DummyResponse("Hi there!")
+    with patch("services.chat_service.call_llm", new_callable=AsyncMock) as mock_call_llm:
+        mock_call_llm.return_value = ("Hi there!", None)
 
         ticket_id = await chat_service.create_chat_ticket(
             session_id=session_id,
@@ -94,12 +69,12 @@ async def test_create_chat_ticket(chat_service, temp_storage):
 async def test_process_chat_success(chat_service, temp_storage):
     """Test successful chat processing."""
     messages = [{"role": "user", "content": "Test message"}]
-    model = "gpt-4"
+    model = "openai/gpt-4"
     config = {"temperature": 0.5}
     session_id = "test-session"
 
-    with patch("services.chat_service.acompletion", new_callable=AsyncMock) as mock_acompletion:
-        mock_acompletion.return_value = _DummyResponse("Test response", model="gpt-4")
+    with patch("services.chat_service.call_llm", new_callable=AsyncMock) as mock_call_llm:
+        mock_call_llm.return_value = ("Test response", {"some": "thoughts"})
 
         ticket_id = await chat_service.create_chat_ticket(
             session_id=session_id,
@@ -117,22 +92,30 @@ async def test_process_chat_success(chat_service, temp_storage):
 
     assert ticket_data["status"] == "completed"
     assert ticket_data["response"]["content"] == "Test response"
-    assert ticket_data["response"]["model"] == "gpt-4"
-    assert ticket_data["response"]["usage"] is not None
+    assert ticket_data["response"]["model"] == model
     assert ticket_data["response"]["finish_reason"] == "stop"
+    assert ticket_data["response"]["thoughts"] == {"some": "thoughts"}
     assert "completed_at" in ticket_data
+
+    # Verify call_llm was called with correct arguments
+    mock_call_llm.assert_called_once()
+    call_kwargs = mock_call_llm.call_args[1]
+    assert call_kwargs["provider"] == "openai"
+    assert call_kwargs["model"] == "gpt-4"
+    assert call_kwargs["messages"] == messages
+    assert call_kwargs["parameters"] == config
 
 
 @pytest.mark.asyncio
 async def test_process_chat_failure(chat_service, temp_storage):
     """Test chat processing with error."""
     messages = [{"role": "user", "content": "Test"}]
-    model = "gpt-3.5-turbo"
+    model = "openai/gpt-3.5-turbo"
     config = {}
     session_id = "test-session"
 
-    with patch("services.chat_service.acompletion", new_callable=AsyncMock) as mock_acompletion:
-        mock_acompletion.side_effect = Exception("API Error")
+    with patch("services.chat_service.call_llm", new_callable=AsyncMock) as mock_call_llm:
+        mock_call_llm.side_effect = Exception("API Error")
 
         ticket_id = await chat_service.create_chat_ticket(
             session_id=session_id,
@@ -154,6 +137,34 @@ async def test_process_chat_failure(chat_service, temp_storage):
 
 
 @pytest.mark.asyncio
+async def test_process_chat_no_provider_prefix(chat_service, temp_storage):
+    """Test chat processing when model has no provider prefix (defaults to openai)."""
+    messages = [{"role": "user", "content": "Test message"}]
+    model = "gpt-4"  # No provider prefix
+    config = {}
+    session_id = "test-session"
+
+    with patch("services.chat_service.call_llm", new_callable=AsyncMock) as mock_call_llm:
+        mock_call_llm.return_value = ("Response", None)
+
+        ticket_id = await chat_service.create_chat_ticket(
+            session_id=session_id,
+            messages=messages,
+            model=model,
+            config=config
+        )
+
+        # Wait for processing to complete
+        if ticket_id in chat_service.active_tasks:
+            await chat_service.active_tasks[ticket_id]
+
+    # Verify call_llm was called with openai as default provider
+    call_kwargs = mock_call_llm.call_args[1]
+    assert call_kwargs["provider"] == "openai"
+    assert call_kwargs["model"] == "gpt-4"
+
+
+@pytest.mark.asyncio
 async def test_get_ticket_status_not_found(chat_service):
     """Test getting status for non-existent ticket."""
     result = await chat_service.get_ticket_status("non-existent-ticket")
@@ -164,7 +175,7 @@ async def test_get_ticket_status_not_found(chat_service):
 async def test_stream_chat_success(chat_service):
     """Test streaming chat completion."""
     messages = [{"role": "user", "content": "Hello"}]
-    model = "gpt-3.5-turbo"
+    model = "openai/gpt-3.5-turbo"
     config = {"temperature": 0.7}
     session_id = "test-session"
 
@@ -181,14 +192,12 @@ async def test_stream_chat_success(chat_service):
         def __init__(self, content):
             self.choices = [MockStreamChoice(MockDelta(content))]
 
-    async def mock_stream():
+    async def mock_stream(*args, **kwargs):
         yield MockChunk("Hello")
         yield MockChunk(" there")
         yield MockChunk("!")
 
-    with patch("services.chat_service.acompletion", new_callable=AsyncMock) as mock_acompletion:
-        mock_acompletion.return_value = mock_stream()
-
+    with patch("services.chat_service.stream_llm", side_effect=mock_stream):
         chunks = []
         async for chunk in chat_service.stream_chat(
             session_id=session_id,
@@ -209,13 +218,16 @@ async def test_stream_chat_success(chat_service):
 async def test_stream_chat_error(chat_service):
     """Test streaming chat with error."""
     messages = [{"role": "user", "content": "Test"}]
-    model = "gpt-3.5-turbo"
+    model = "openai/gpt-3.5-turbo"
     config = {}
     session_id = "test-session"
 
-    with patch("services.chat_service.acompletion", new_callable=AsyncMock) as mock_acompletion:
-        mock_acompletion.side_effect = Exception("Stream error")
+    async def mock_stream_error(*args, **kwargs):
+        raise Exception("Stream error")
+        # This yield is needed to make the function a generator
+        yield  # pragma: no cover
 
+    with patch("services.chat_service.stream_llm", side_effect=mock_stream_error):
         chunks = []
         async for chunk in chat_service.stream_chat(
             session_id=session_id,

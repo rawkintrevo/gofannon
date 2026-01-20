@@ -17,13 +17,13 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def prevent_litellm_calls(monkeypatch):
+def prevent_direct_llm_calls(monkeypatch):
+    """Prevent any direct LLM calls by mocking call_llm to fail."""
     async def _fail(*args, **kwargs):
-        raise AssertionError("Unexpected litellm call")
+        raise AssertionError("Unexpected call_llm call in agent code")
 
-    monkeypatch.setattr(dependencies_module.litellm, "aresponses", _fail)
-    monkeypatch.setattr(dependencies_module.litellm, "aget_responses", _fail)
-    monkeypatch.setattr(dependencies_module.litellm, "acompletion", _fail)
+    # Mock call_llm at the dependencies module level
+    monkeypatch.setattr(dependencies_module, "call_llm", _fail)
 
 
 def _build_request() -> Request:
@@ -65,7 +65,8 @@ def test_require_admin_access_valid_password(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_code_success(prevent_litellm_calls):
+async def test_execute_agent_code_success():
+    """Test basic agent code execution without LLM calls."""
     code = """
 async def run(input_dict, tools):
     return {"outputText": input_dict["message"]}
@@ -78,7 +79,8 @@ async def run(input_dict, tools):
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_code_missing_run(prevent_litellm_calls):
+async def test_execute_agent_code_missing_run():
+    """Test error when agent code doesn't define run function."""
     code = """
 async def not_run(input_dict, tools):
     return {"outputText": "nope"}
@@ -89,7 +91,8 @@ async def not_run(input_dict, tools):
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_code_non_async_run(prevent_litellm_calls):
+async def test_execute_agent_code_non_async_run():
+    """Test error when run function is not async."""
     code = """
 
 def run(input_dict, tools):
@@ -101,7 +104,42 @@ def run(input_dict, tools):
 
 
 @pytest.mark.asyncio
-async def test_process_chat_gofannon_flow(monkeypatch, prevent_litellm_calls):
+async def test_execute_agent_code_with_call_llm(monkeypatch):
+    """Test agent code that uses call_llm."""
+    call_llm_args = {}
+
+    async def fake_call_llm(**kwargs):
+        call_llm_args.update(kwargs)
+        return "LLM response content", None
+
+    # Agent code that uses call_llm
+    code = """
+async def run(input_dict, tools):
+    content, _ = await call_llm(
+        provider="openai",
+        model="gpt-4",
+        messages=[{"role": "user", "content": input_dict["message"]}],
+        parameters={},
+        user_service=None,
+        user_id=None,
+    )
+    return {"outputText": content}
+"""
+    db_service = Mock()
+
+    # We need to patch call_llm at the module level before exec_globals is created
+    monkeypatch.setattr(dependencies_module, "call_llm", fake_call_llm)
+
+    result = await _execute_agent_code(code, {"message": "test prompt"}, {}, [], db_service)
+
+    assert result == {"outputText": "LLM response content"}
+    assert call_llm_args["provider"] == "openai"
+    assert call_llm_args["model"] == "gpt-4"
+
+
+@pytest.mark.asyncio
+async def test_process_chat_gofannon_flow(monkeypatch):
+    """Test chat processing for gofannon provider (agent execution)."""
     ticket_saves = []
     db_service = Mock()
 
@@ -161,7 +199,8 @@ async def test_process_chat_gofannon_flow(monkeypatch, prevent_litellm_calls):
 
 
 @pytest.mark.asyncio
-async def test_process_chat_non_gofannon_flow(monkeypatch, prevent_litellm_calls):
+async def test_process_chat_non_gofannon_flow(monkeypatch):
+    """Test chat processing for non-gofannon providers (direct LLM call)."""
     ticket_saves = []
     db_service = Mock()
 

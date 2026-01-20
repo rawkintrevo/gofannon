@@ -38,40 +38,47 @@ Here is the documentation for the `call` method:
     
 """
 
-how_to_use_litellm = """
-You also have access to the `litellm` library for making calls to other language models.
+how_to_use_llm = """
+You have access to the `call_llm` function for making calls to language models.
 The specific models you can call are listed in the section above.
 
-To make a call, use `await litellm.acompletion()`:
+To make a call, use `await call_llm()`:
 
-async def acompletion(model: str, messages: list, **kwargs):
+async def call_llm(provider: str, model: str, messages: list, parameters: dict, ...) -> tuple[str, Any]:
     '''
-    Makes an asynchronous call to a language model.
+    Makes an asynchronous call to a language model through the centralized LLM service.
 
-    :param model: 
-        The name of the model to call, including the provider prefix.
-        (e.g., 'openai/gpt-4', 'openai/gpt-3.5-turbo', 'claude-3-opus', 'gemini/gemini-pro').
-    :param messages: 
+    :param provider:
+        The provider name (e.g., 'openai', 'anthropic', 'gemini').
+    :param model:
+        The model name without the provider prefix (e.g., 'gpt-4', 'claude-3-opus').
+    :param messages:
         A list of dictionaries representing the conversation history,
         following the format: `[{"role": "user", "content": "Hello"}, ...]`.
-    :param kwargs: 
-        Additional parameters to pass to the model provider's API,
+    :param parameters:
+        A dictionary of additional parameters to pass to the model provider's API,
         such as `temperature`, `max_tokens`, `top_p`, etc.
+    :param tools:
+        Optional list of tool configurations for function calling.
+    :param user_service:
+        Optional user service for tracking usage (set to None if not needed).
+    :param user_id:
+        Optional user ID for tracking usage (set to None if not needed).
 
-    :return: 
-        A `ModelResponse` object from litellm. To get the content,
-        access `response.choices[0].message.content`.
+    :return:
+        A tuple of (content, thoughts) where content is the string response
+        and thoughts contains any reasoning/tool call information.
 
     :Example:
-    >>> import litellm
-    >>> response = await litellm.acompletion(
-    ...     model="gpt-3.5-turbo",
+    >>> content, thoughts = await call_llm(
+    ...     provider="openai",
+    ...     model="gpt-4",
     ...     messages=[{"role": "user", "content": "Summarize this for me."}],
-    ...     temperature=0.7,
-    ...     max_tokens=150
+    ...     parameters={"temperature": 0.7, "max_tokens": 150},
+    ...     user_service=None,
+    ...     user_id=None,
     ... )
-    >>> summary = response.choices[0].message.content
-    >>> print(summary)
+    >>> print(content)
     "This is a summary." # (Example Output)
     '''
 """
@@ -162,10 +169,9 @@ You can use it to call tools as described in the documentation.
 **Available in the Sandbox:**
 - `mcpc` - Dictionary of MCP clients for calling external tools
 - `http_client` - Async HTTP client (httpx) for REST API calls
-- `litellm` - For calling language models via `await litellm.acompletion()`
+- `call_llm` - For calling language models via `await call_llm(provider, model, messages, parameters, ...)`
 - `gofannon_client` - For calling other Gofannon agents
 - `asyncio`, `json`, `re` - Standard Python libraries
-- Additional tools may be documented above (e.g., `web_search`)
 
 **Input Schema:**
 ```json

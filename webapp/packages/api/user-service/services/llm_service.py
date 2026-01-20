@@ -1,10 +1,9 @@
-import asyncio
 import json
 from config import settings
 from config.provider_config import PROVIDER_CONFIG
 from services.database_service import get_database_service
 from services.user_service import get_user_service
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, AsyncGenerator, Dict, List, Tuple, Optional
 import litellm
 
 from services.litellm_logger import ensure_litellm_logging
@@ -12,6 +11,10 @@ from services.observability_service import get_observability_service
 from services.user_service import UserService
 
 ensure_litellm_logging()
+
+# Configure litellm defaults
+litellm.drop_params = True
+litellm.set_verbose = False
 
 def _extract_response_cost(response_obj: Any) -> Optional[float]:
     standard_logging = None
@@ -276,3 +279,65 @@ async def call_llm(
             user_service.add_usage(user_id, response_cost, basic_info=user_basic_info)
 
     return content, thoughts
+
+
+async def stream_llm(
+    provider: str,
+    model: str,
+    messages: List[Dict[str, Any]],
+    parameters: Dict[str, Any],
+    user_service: Optional[UserService] = None,
+    user_id: Optional[str] = None,
+    user_basic_info: Optional[Dict[str, Any]] = None,
+) -> AsyncGenerator[Any, None]:
+    """
+    Stream LLM responses using litellm's async streaming.
+
+    This function provides streaming capability while maintaining the same
+    interface and checks as call_llm (user allowance, logging, etc).
+
+    Yields chunks from the LLM response stream.
+
+    Note: Cost tracking is not available for streaming responses.
+    """
+    model_string = f"{provider}/{model}"
+
+    # Filter out None values from parameters
+    filtered_params = {k: v for k, v in parameters.items() if v is not None}
+
+    kwargs = {
+        "model": model_string,
+        "messages": messages,
+        "stream": True,
+        **filtered_params,
+    }
+
+    # Remove reasoning_effort from kwargs if present (not typically used in streaming)
+    kwargs.pop('reasoning_effort', None)
+
+    if user_service is None:
+        user_service = get_user_service(get_database_service(settings))
+    if user_id is None:
+        user_id = "anonymous"
+
+    if user_service and user_id:
+        user_service.require_allowance(user_id, basic_info=user_basic_info)
+
+    try:
+        response = await litellm.acompletion(**kwargs)
+        async for chunk in response:
+            yield chunk
+    except Exception as e:
+        observability = get_observability_service()
+        observability.log_exception(
+            e,
+            user_id=user_id,
+            metadata={
+                "context": "stream_llm",
+                "model": model_string,
+                "provider": provider,
+            }
+        )
+        raise
+
+
