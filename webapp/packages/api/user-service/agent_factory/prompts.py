@@ -41,6 +41,9 @@ Here is the documentation for the `call` method:
 how_to_use_llm = """
 You have access to the `call_llm` function for making calls to language models.
 The specific models you can call are listed in the section above.
+For each invokable model, you are given the configured parameters and any selected built-in tool.
+When you call a listed model, pass the parameters exactly as shown, and include the `tools` argument
+only when a built-in tool is selected for that model.
 
 To make a call, use `await call_llm()`:
 
