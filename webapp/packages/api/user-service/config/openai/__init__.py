@@ -237,7 +237,12 @@ models = {
         "api_style": "responses",
         "returns_thoughts": True,
         "parameters": {
-            "temperature": {"type": "float", "default": 0.2, "min": 0.0, "max": 2.0},
+            "reasoning_effort": {
+                "type": "choice", 
+                "default": "disable", 
+                "choices": ["disable", "low", "medium", "high"],
+                "description": "Reasoning Effort: Effort level for reasoning during generation" 
+            },
         },
         "built_in_tools": []
     },
