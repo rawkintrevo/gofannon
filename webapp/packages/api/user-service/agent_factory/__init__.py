@@ -73,17 +73,44 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
                 print(f"Could not load agent {agent_id} for doc generation: {e}")
         gofannon_agent_docs = "\n\n".join(agent_docs_parts)
 
-    ## Generate docs for invokable models
+    ## Generate docs for invokable models with their built-in tools
     model_docs = ""
     if request.invokable_models:
-        model_docs += "The agent can invoke the following models using `call_llm`:\n"
+        model_docs += "## Invokable Models\n\nThe agent can invoke the following models using `call_llm`:\n\n"
         for model_config in request.invokable_models:
-            model_docs += f"- provider: `{model_config.provider}`, model: `{model_config.model}`\n"
-        model_docs += "\n"
-    
-    ## Generate docs for built-in tools
-    built_in_tools_docs = ""
-    # Built-in tools documentation can be added here if needed in the future
+            provider = model_config.provider
+            model_name = model_config.model
+            model_docs += f"### `{provider}/{model_name}`\n"
+
+            # Look up built-in tools from provider config
+            provider_models = PROVIDER_CONFIG.get(provider, {}).get("models", {})
+            model_info = provider_models.get(model_name, {})
+            built_in_tools = model_info.get("built_in_tools", [])
+
+            if built_in_tools:
+                model_docs += "**Available Built-in Tools:**\n"
+                for tool in built_in_tools:
+                    tool_id = tool.get("id", "unknown")
+                    tool_desc = tool.get("description", "")
+                    tool_config = tool.get("tool_config", {})
+                    model_docs += f"- `{tool_id}`: {tool_desc}\n"
+                    model_docs += f"  - Tool config to pass: `{json.dumps(tool_config)}`\n"
+                model_docs += "\n**Example with built-in tool:**\n```python\n"
+                # Generate example based on first tool
+                first_tool = built_in_tools[0]
+                tool_config = first_tool.get("tool_config", {})
+                model_docs += f"""content, thoughts = await call_llm(
+    provider="{provider}",
+    model="{model_name}",
+    messages=[{{"role": "user", "content": "Your query here"}}],
+    parameters={{}},
+    tools=[{json.dumps(tool_config)}],
+    user_service=None,
+    user_id=None,
+)
+```\n\n"""
+            else:
+                model_docs += "No built-in tools available for this model.\n\n"
    
     input_schema_str = json.dumps(request.input_schema, indent=4)
     output_schema_str = json.dumps(request.output_schema, indent=4)

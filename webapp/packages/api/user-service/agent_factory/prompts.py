@@ -59,7 +59,7 @@ async def call_llm(provider: str, model: str, messages: list, parameters: dict, 
         A dictionary of additional parameters to pass to the model provider's API,
         such as `temperature`, `max_tokens`, `top_p`, etc.
     :param tools:
-        Optional list of tool configurations for function calling.
+        Optional list of built-in tool configurations. See "Using Built-in Tools" below.
     :param user_service:
         Optional user service for tracking usage (set to None if not needed).
     :param user_id:
@@ -81,6 +81,52 @@ async def call_llm(provider: str, model: str, messages: list, parameters: dict, 
     >>> print(content)
     "This is a summary." # (Example Output)
     '''
+
+## Using Built-in Tools
+
+Some models support built-in tools like web search, code execution, or URL context.
+To use these tools, pass the `tools` parameter with a list of tool configurations.
+
+**OpenAI Web Search** (for models like gpt-4o, gpt-5, o3, etc.):
+```python
+content, thoughts = await call_llm(
+    provider="openai",
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "What are the latest news about AI?"}],
+    parameters={},
+    tools=[{"type": "web_search", "search_context_size": "medium"}],
+    user_service=None,
+    user_id=None,
+)
+```
+
+**Gemini Google Search** (for models like gemini-2.5-pro, gemini-2.5-flash):
+```python
+content, thoughts = await call_llm(
+    provider="gemini",
+    model="gemini-2.5-pro",
+    messages=[{"role": "user", "content": "Search for recent developments in quantum computing."}],
+    parameters={},
+    tools=[{"google_search": {}}],
+    user_service=None,
+    user_id=None,
+)
+```
+
+**Gemini Code Execution**:
+```python
+content, thoughts = await call_llm(
+    provider="gemini",
+    model="gemini-2.5-pro",
+    messages=[{"role": "user", "content": "Calculate the factorial of 10 using Python."}],
+    parameters={},
+    tools=[{"codeExecution": {}}],
+    user_service=None,
+    user_id=None,
+)
+```
+
+**Note:** Not all models support all tools. Check the model documentation above to see which built-in tools are available for each model.
 """
 
 
