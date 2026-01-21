@@ -1,0 +1,125 @@
+name: Testing Improvements
+description: Suggest improvements to tests or report testing gaps
+title: "[Testing]: "
+labels: ["testing"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Gofannon's test coverage and quality! Good tests help maintain a reliable codebase.
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What type of testing issue is this?
+      options:
+        - Missing test coverage
+        - Flaky/unreliable test
+        - Test improvement suggestion
+        - Test infrastructure issue
+        - Performance testing
+        - Integration testing gap
+        - E2E testing gap
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: test-type
+    attributes:
+      label: Test Type
+      description: What type of test is affected or needed?
+      options:
+        - Unit tests
+        - Integration tests
+        - End-to-end (E2E) tests
+        - Performance tests
+        - Multiple types
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component does this testing issue relate to?
+      options:
+        - Web UI (Frontend)
+        - API (Backend)
+        - Database Service
+        - CLI/Tools
+        - Infrastructure/CI
+        - Multiple components
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the testing issue or improvement in detail.
+      placeholder: |
+        What tests are missing? What needs to be improved?
+        Which code paths are not covered?
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current State
+      description: Describe the current testing situation (if applicable).
+      placeholder: |
+        What tests exist currently? What is the current coverage?
+    validations:
+      required: false
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: How would you suggest improving the tests?
+      placeholder: |
+        What tests should be added? How should existing tests be modified?
+    validations:
+      required: false
+
+  - type: textarea
+    id: test-cases
+    attributes:
+      label: Suggested Test Cases
+      description: List specific test cases that should be added or improved.
+      placeholder: |
+        - Test case 1: ...
+        - Test case 2: ...
+        - Edge case: ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, error logs, or screenshots here.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you like to help implement these testing improvements?
+      options:
+        - label: I would be willing to submit a PR to add/improve these tests
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/the-ai-alliance/gofannon/blob/main/CODE_OF_CONDUCT.md).
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

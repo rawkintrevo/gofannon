@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://the-ai-alliance.github.io/gofannon/
+    about: Check the documentation for answers to common questions
+  - name: Discussions
+    url: https://github.com/the-ai-alliance/gofannon/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: Contributing Guide
+    url: https://github.com/the-ai-alliance/gofannon/blob/main/CONTRIBUTING.md
+    about: Learn how to contribute to Gofannon
