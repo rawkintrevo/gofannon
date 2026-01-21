@@ -1,0 +1,92 @@
+name: Website Issue
+description: Report an issue or suggest an improvement for the documentation website
+title: "[Website]: "
+labels: ["website"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the Gofannon documentation website!
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What type of website issue is this?
+      options:
+        - Broken link
+        - Incorrect information
+        - Missing content
+        - Styling/Layout issue
+        - Navigation problem
+        - Performance issue
+        - Accessibility issue
+        - Suggestion/Enhancement
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      description: What is the URL of the affected page?
+      placeholder: https://the-ai-alliance.github.io/gofannon/...
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the issue or suggestion in detail.
+      placeholder: Describe the issue...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior / Desired Outcome
+      description: What should happen instead, or what would you like to see?
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help illustrate the issue.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      description: Which browser are you using?
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the issue here.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/the-ai-alliance/gofannon/blob/main/CODE_OF_CONDUCT.md).
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
