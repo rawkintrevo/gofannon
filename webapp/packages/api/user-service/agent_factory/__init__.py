@@ -1,7 +1,7 @@
 # webapp/packages/api/user-service/agent_factory/__init__.py
 from .remote_mcp_client import RemoteMCPClient
 from .prompts import how_to_use_tools, \
-    how_to_use_litellm, \
+    how_to_use_llm, \
     what_to_do_prompt_template, \
     how_to_use_swagger_tools, \
     how_to_use_gofannon_agents
@@ -73,56 +73,59 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
                 print(f"Could not load agent {agent_id} for doc generation: {e}")
         gofannon_agent_docs = "\n\n".join(agent_docs_parts)
 
-    ## Generate docs for invokable models
+    built_in_tools_docs = ""
+
+    ## Generate docs for invokable models with their configured parameters and built-in tools
     model_docs = ""
     if request.invokable_models:
-        model_docs += "The agent can invoke the following models using `litellm.acompletion`:\n"
+        model_docs += "## Invokable Models\n\nThe agent can invoke the following models using `call_llm`.\nUse the configured parameters and built-in tool selections shown for each model:\n\n"
         for model_config in request.invokable_models:
-            model_name = f"{model_config.provider}/{model_config.model}"
-            model_docs += f"- `{model_name}`\n"
-        model_docs += "\n"
-    
-    ## Generate docs for built-in tools (like web_search)
-    built_in_tools_docs = ""
-    if request.built_in_tools:
-        if "web_search" in request.built_in_tools:
-            built_in_tools_docs = """## Web Search
+            provider = model_config.provider
+            model_name = model_config.model
+            model_docs += f"### `{provider}/{model_name}`\n"
 
-The agent has access to a `web_search` function for searching the web. This function is already available in the execution environment.
+            # Look up built-in tools from provider config
+            provider_models = PROVIDER_CONFIG.get(provider, {}).get("models", {})
+            model_info = provider_models.get(model_name, {})
+            built_in_tools = model_info.get("built_in_tools", [])
+            configured_params = model_config.parameters or {}
+            selected_tool_id = model_config.built_in_tool
 
-**Usage:**
-```python
-# Simply call web_search directly - it's always available when enabled
-result = await web_search(query="your search query here")
-```
+            model_docs += f"**Configured Parameters:** `{json.dumps(configured_params)}`\n"
 
-**Function signature:**
-`async def web_search(query: str, model: str = "openai/gpt-4o-mini", search_context_size: str = "medium") -> str`
+            selected_tool = None
+            if selected_tool_id:
+                selected_tool = next(
+                    (tool for tool in built_in_tools if tool.get("id") == selected_tool_id),
+                    None
+                )
+                if selected_tool:
+                    tool_desc = selected_tool.get("description", "")
+                    tool_config = selected_tool.get("tool_config", {})
+                    model_docs += f"**Selected Built-in Tool:** `{selected_tool_id}`"
+                    if tool_desc:
+                        model_docs += f" - {tool_desc}"
+                    model_docs += "\n"
+                    model_docs += f"Tool config to pass: `{json.dumps(tool_config)}`\n"
+                else:
+                    model_docs += f"**Selected Built-in Tool:** `{selected_tool_id}` (no tool config found)\n"
+            else:
+                model_docs += "No built-in tool selected for this model.\n"
 
-**Parameters:**
-- `query` (str): The search query or question to answer using web search.
-- `model` (str, optional): The model to use for web search. Default: "openai/gpt-4o-mini"
-- `search_context_size` (str, optional): Size of search context - 'low', 'medium', or 'high'. Default: "medium"
-
-**Returns:** A string containing the search results and answer. Returns empty string if search fails.
-
-**Important:** 
-- Do NOT check `if "web_search" in globals()` - just call the function directly
-- Always `await` the function call
-- Handle the case where the result might be empty
-
-**Example:**
-```python
-# Search for information
-search_result = await web_search(query="arXiv 2507.15855 paper abstract")
-if search_result:
-    # Use the search result
-    summary = search_result
-else:
-    # Fallback to other methods
-    summary = "Could not retrieve search results"
-```
-"""
+            model_docs += "\n**Example call_llm usage for this model:**\n```python\n"
+            tools_line = "None"
+            if selected_tool and selected_tool.get("tool_config") is not None:
+                tools_line = f"[{json.dumps(selected_tool.get('tool_config', {}))}]"
+            model_docs += f"""content, thoughts = await call_llm(
+    provider="{provider}",
+    model="{model_name}",
+    messages=[{{"role": "user", "content": "Your query here"}}],
+    parameters={json.dumps(configured_params)},
+    tools={tools_line},
+    user_service=None,
+    user_id=None,
+)
+```\n\n"""
    
     input_schema_str = json.dumps(request.input_schema, indent=4)
     output_schema_str = json.dumps(request.output_schema, indent=4)
@@ -149,7 +152,7 @@ else:
         system_prompt_parts.append(how_to_use_gofannon_agents)  
                
     if request.invokable_models:
-        system_prompt_parts.append(how_to_use_litellm)
+        system_prompt_parts.append(how_to_use_llm)
     system_prompt_parts.append(what_to_do)
     system_prompt = "\n\n".join(system_prompt_parts)  
     
@@ -247,7 +250,7 @@ Do not include any other text or markdown formatting around the JSON object.
         code_body = code_body.strip()[:-len("```")].strip()
 
     header = """from agent_factory.remote_mcp_client import RemoteMCPClient
-import litellm
+from services.llm_service import call_llm
 import httpx
 
 async def run(input_dict, tools):
