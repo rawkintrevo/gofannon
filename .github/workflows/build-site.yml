@@ -1,53 +1,53 @@
-name: Build and Deploy Site
+# name: Build and Deploy Site
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+# on:
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - main
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+# concurrency:
+#   group: "pages"
+#   cancel-in-progress: false
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    if: github.repository == 'The-AI-Alliance/gofannon' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     if: github.repository == 'The-AI-Alliance/gofannon' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.1.0
+#       - name: Set up Ruby
+#         uses: ruby/setup-ruby@v1
+#         with:
+#           ruby-version: 3.1.0
 
-      - name: Build Jekyll site
-        working-directory: ./website
-        env:
-          JEKYLL_ENV: production
-        run: |
-          gem install bundler
-          bundle install
-          bundle exec jekyll build
+#       - name: Build Jekyll site
+#         working-directory: ./website
+#         env:
+#           JEKYLL_ENV: production
+#         run: |
+#           gem install bundler
+#           bundle install
+#           bundle exec jekyll build
 
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: website/_site/
+#       - name: Upload site artifact
+#         uses: actions/upload-pages-artifact@v3
+#         with:
+#           path: website/_site/
 
-  deploy:
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+#   deploy:
+#     permissions:
+#       contents: read
+#       pages: write
+#       id-token: write
+#     environment:
+#       name: github-pages
+#       url: ${{ steps.deployment.outputs.page_url }}
+#     runs-on: ubuntu-latest
+#     needs: build
+#     steps:
+#       - name: Deploy to GitHub Pages
+#         id: deployment
+#         uses: actions/deploy-pages@v4
