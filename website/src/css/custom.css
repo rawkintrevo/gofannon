@@ -1,30 +1,467 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * Gofannon - SNES/Genesis RPG Style Theme
+ * Inspired by Final Fantasy VI, Chrono Trigger, and classic 16-bit RPGs
  */
 
-/* You can override the default Infima variables here. */
+/* Import pixel font for UI elements only */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* ============================================
+   COLOR PALETTE & CSS VARIABLES
+   ============================================ */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  /* Gofannon brand colors */
+  --ifm-color-primary: #04B2D9;
+  --ifm-color-primary-dark: #03a0c4;
+  --ifm-color-primary-darker: #0390b0;
+  --ifm-color-primary-darkest: #027090;
+  --ifm-color-primary-light: #05c4ee;
+  --ifm-color-primary-lighter: #20d0f5;
+  --ifm-color-primary-lightest: #50dcf8;
+
+  /* RPG Theme Colors */
+  --rpg-secondary: #A60505;
+  --rpg-secondary-light: #cc1a1a;
+  --rpg-bg-dark: #0a0a1a;
+  --rpg-bg-card: #12122a;
+  --rpg-bg-card-light: #1a1a3a;
+  --rpg-border: #04B2D9;
+  --rpg-border-glow: rgba(4, 178, 217, 0.5);
+  --rpg-text: #f0f0f0;
+  --rpg-text-muted: #a0a0b0;
+
+  /* Fonts */
+  --font-pixel: 'Press Start 2P', cursive;
+
+  /* Infima overrides */
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-heading-font-weight: 700;
+  --docusaurus-highlighted-code-line-bg: rgba(4, 178, 217, 0.15);
+
+  /* Light mode backgrounds */
+  --ifm-background-color: #f5f5fa;
+  --ifm-background-surface-color: #ffffff;
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* ============================================
+   DARK MODE - THE TRUE RPG EXPERIENCE
+   ============================================ */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #04B2D9;
+  --ifm-color-primary-dark: #03a0c4;
+  --ifm-color-primary-darker: #0390b0;
+  --ifm-color-primary-darkest: #027090;
+  --ifm-color-primary-light: #20d0f5;
+  --ifm-color-primary-lighter: #50dcf8;
+  --ifm-color-primary-lightest: #80e5fb;
+
+  --ifm-background-color: var(--rpg-bg-dark);
+  --ifm-background-surface-color: var(--rpg-bg-card);
+  --ifm-navbar-background-color: var(--rpg-bg-dark);
+  --ifm-footer-background-color: var(--rpg-bg-dark);
+
+  --docusaurus-highlighted-code-line-bg: rgba(4, 178, 217, 0.2);
+}
+
+/* ============================================
+   PIXEL FONT - UI ELEMENTS ONLY
+   Keep body text readable!
+   ============================================ */
+
+/* Site title in navbar */
+.navbar__title {
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Navigation links */
+.navbar__link {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.navbar__link:hover {
+  color: var(--ifm-color-primary-light) !important;
+  text-shadow: 0 0 10px var(--rpg-border-glow);
+}
+
+.navbar__link--active {
+  color: var(--rpg-secondary-light) !important;
+}
+
+/* Page titles - h1 and h2 get pixel treatment */
+.markdown h1,
+article h1,
+.blogPostTitle,
+[class*="blogPostTitle"] {
+  font-family: var(--font-pixel);
+  font-size: 1.5rem;
+  line-height: 1.8;
+  text-shadow: 3px 3px 0 #730303;
+  color: #A60505 !important;
+}
+
+.markdown h2,
+article h2 {
+  font-family: var(--font-pixel);
+  font-size: 0.9rem;
+  line-height: 1.8;
+  text-shadow: 2px 2px 0 #730303;
+  color: #A60505;
+  border-bottom: 3px solid #A60505;
+  padding-bottom: 0.5rem;
+}
+
+/* Blog post titles */
+.blog-post-item h2 a,
+article header h1 a,
+article header h2 a {
+  color: #A60505 !important;
+  text-shadow: 2px 2px 0 #730303;
+}
+
+.blog-post-item h2 a:hover,
+article header h1 a:hover,
+article header h2 a:hover {
+  color: #cc1a1a !important;
+}
+
+/* Hero title on homepage */
+.hero__title {
+  font-family: var(--font-pixel);
+  font-size: 2rem;
+  text-shadow: 4px 4px 0 #730303;
+  color: #A60505;
+  animation: title-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes title-glow {
+  from {
+    text-shadow: 4px 4px 0 #730303, 0 0 10px rgba(166, 5, 5, 0.4);
+  }
+  to {
+    text-shadow: 4px 4px 0 #730303, 0 0 20px rgba(166, 5, 5, 0.5), 0 0 30px rgba(166, 5, 5, 0.3);
+  }
+}
+
+/* Hero subtitle - readable but styled */
+.hero__subtitle {
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 1.5rem auto;
+  line-height: 1.6;
+}
+
+[data-theme='dark'] .hero__subtitle {
+  color: #e0e0e0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ============================================
+   RPG MENU BOX STYLING
+   The iconic SNES RPG look!
+   ============================================ */
+
+/* Primary button - RPG style */
+.button--primary,
+.button--secondary {
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  padding: 1rem 1.5rem;
+  border: 3px solid var(--ifm-color-primary);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--rpg-bg-card-light) 0%, var(--rpg-bg-card) 100%);
+  color: var(--ifm-color-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.1),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.2),
+    3px 3px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.1s ease;
+  position: relative;
+}
+
+.button--primary:hover,
+.button--secondary:hover {
+  transform: translate(1px, 1px);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.1),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.2),
+    2px 2px 0 rgba(0, 0, 0, 0.4);
+  color: var(--ifm-color-primary-light);
+  border-color: var(--ifm-color-primary-light);
+  text-decoration: none;
+}
+
+.button--primary:active,
+.button--secondary:active {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 1px 1px 0 rgba(0, 0, 0, 0.2),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   NAVBAR - RPG MENU BAR
+   ============================================ */
+.navbar {
+  border-bottom: 3px solid var(--ifm-color-primary);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .navbar {
+  background: linear-gradient(180deg, #15152a 0%, var(--rpg-bg-dark) 100%);
+}
+
+.navbar__logo {
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.5));
+}
+
+/* ============================================
+   SIDEBAR - RPG INVENTORY MENU
+   ============================================ */
+.menu {
+  padding: 0.5rem;
+}
+
+[data-theme='dark'] .menu {
+  background: var(--rpg-bg-card);
+  border-right: 3px solid var(--ifm-color-primary);
+}
+
+.menu__link {
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  margin: 2px 0;
+}
+
+.menu__link:hover {
+  background: rgba(4, 178, 217, 0.1);
+  border-left-color: var(--ifm-color-primary);
+}
+
+.menu__link--active {
+  background: rgba(4, 178, 217, 0.15) !important;
+  border-left-color: var(--ifm-color-primary) !important;
+  font-weight: 700;
+}
+
+.menu__list-item-collapsible:hover {
+  background: rgba(4, 178, 217, 0.1);
+}
+
+/* Category labels in sidebar */
+.menu__link--sublist-caret {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================
+   CARDS & CONTENT BOXES
+   ============================================ */
+.card {
+  background: #8C6F56;
+  border: 4px solid #341307;
+  border-radius: 6px;
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.15),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.25),
+    4px 4px 0 #341307;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.15),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.25),
+    0 0 15px rgba(140, 111, 86, 0.4),
+    4px 8px 0 #341307;
+  border-color: #4a2010;
+}
+
+/* Doc category cards */
+.card .card__header .card__title {
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  color: #A60505;
+  text-shadow: 2px 2px 0 #730303;
+  line-height: 1.6;
+}
+
+.card .card__body {
+  color: #f0f0f0;
+}
+
+/* Admonitions (note, tip, warning boxes) */
+.alert {
+  border-width: 3px;
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.alert .admonitionHeading_node_modules-\@docusaurus-theme-classic-lib-theme-Admonition-Layout-styles-module {
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+/* ============================================
+   CODE BLOCKS - TERMINAL STYLE
+   ============================================ */
+pre {
+  border: 3px solid var(--ifm-color-primary);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 20px rgba(0, 0, 0, 0.3),
+    4px 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] pre {
+  background: #0d0d1a !important;
+}
+
+code {
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+}
+
+/* ============================================
+   FOOTER - RPG STATUS BAR
+   ============================================ */
+.footer {
+  border-top: 3px solid var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .footer {
+  background: linear-gradient(180deg, var(--rpg-bg-dark) 0%, #05050f 100%);
+}
+
+.footer__title {
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #A60505;
+  text-shadow: 1px 1px 0 #730303;
+}
+
+.footer__link-item {
+  transition: all 0.15s ease;
+}
+
+.footer__link-item:hover {
+  color: var(--ifm-color-primary-light);
+  text-shadow: 0 0 8px var(--rpg-border-glow);
+}
+
+/* ============================================
+   TABLE OF CONTENTS
+   ============================================ */
+.table-of-contents__link:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary);
+  font-weight: 700;
+}
+
+/* ============================================
+   BREADCRUMBS
+   ============================================ */
+.breadcrumbs__link {
+  transition: all 0.15s ease;
+}
+
+.breadcrumbs__link:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+/* ============================================
+   PAGINATION
+   ============================================ */
+.pagination-nav__link {
+  border: 3px solid var(--ifm-color-primary);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--ifm-color-primary-light);
+  box-shadow: 0 0 15px var(--rpg-border-glow), 3px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.pagination-nav__label {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+}
+
+/* ============================================
+   SEARCH (if using search plugin)
+   ============================================ */
+.DocSearch-Button {
+  border: 2px solid var(--ifm-color-primary) !important;
+  border-radius: 4px !important;
+}
+
+/* ============================================
+   SCROLLBAR STYLING (Webkit)
+   ============================================ */
+[data-theme='dark'] ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: var(--rpg-bg-dark);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: var(--rpg-bg-card-light);
+  border: 2px solid var(--ifm-color-primary);
+  border-radius: 2px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: var(--ifm-color-primary-dark);
+}
+
+/* ============================================
+   SELECTION HIGHLIGHT
+   ============================================ */
+::selection {
+  background: var(--ifm-color-primary);
+  color: white;
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+@media screen and (max-width: 996px) {
+  .hero__title {
+    font-size: 1.2rem;
+  }
+
+  .navbar__title {
+    font-size: 0.6rem;
+  }
+
+  .markdown h1,
+  article h1 {
+    font-size: 1rem;
+  }
+
+  .markdown h2,
+  article h2 {
+    font-size: 0.75rem;
+  }
 }
