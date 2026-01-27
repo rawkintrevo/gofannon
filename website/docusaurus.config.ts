@@ -4,6 +4,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
+const isGitHubPages = process.env.FOR_GH_PAGES === 'true' || process.env.FOR_GH_PAGES === '1';
+
 const config: Config = {
   title: 'Gofannon',
   tagline: 'A web app for rapidly prototyping AI agents and the lightweight web UIs that wrap them—build flows, preview interactions, and share agent-driven experiences without lock-in.',
@@ -15,10 +17,10 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: isGitHubPages ? 'https://the-ai-alliance.github.io' : 'https://your-docusaurus-site.example.com',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: isGitHubPages ? '/gofannon/' : '/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.

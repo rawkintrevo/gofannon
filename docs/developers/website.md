@@ -39,6 +39,23 @@ npm run build
 
 The built files will be output to the `website/build` directory.
 
+## GitHub Pages Configuration
+
+This repo supports GitHub Pages by switching the Docusaurus `url` and `baseUrl` when the `FOR_GH_PAGES` environment variable is set.
+
+- **Local/dev builds**: Do nothing; defaults to `baseUrl: /`.
+- **GitHub Pages builds**: Set `FOR_GH_PAGES=true` so the site builds under `/gofannon/`.
+
+To preview a GitHub Pages-style build locally:
+
+```bash
+cd website
+FOR_GH_PAGES=true npm run build
+FOR_GH_PAGES=true npm run serve
+```
+
+The GitHub Actions workflow sets this variable during Pages deployments.
+
 ## Serving the Production Build
 
 To preview the production build locally:
