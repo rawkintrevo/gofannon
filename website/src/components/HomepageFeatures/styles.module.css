@@ -1,11 +1,92 @@
+/**
+ * Feature cards - RPG Status Box Styling
+ */
+
 .features {
   display: flex;
-  align-items: center;
-  padding: 2rem 0;
+  align-items: stretch;
+  padding: 3rem 0;
   width: 100%;
+  background: linear-gradient(
+    180deg,
+    #0a0a1a 0%,
+    #12122a 100%
+  );
 }
 
 .featureSvg {
-  height: 200px;
-  width: 200px;
+  height: 120px;
+  width: 120px;
+  margin-bottom: 1rem;
+  /* Give SVGs a slight glow effect */
+  filter: drop-shadow(2px 2px 0 #341307);
+  transition: all 0.3s ease;
+}
+
+/* RPG Status Box / Item Card styling */
+.featureCard {
+  background: #8C6F56;
+  border: 4px solid #341307;
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin: 0 0.75rem;
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.15),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.25),
+    4px 4px 0 #341307;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.featureCard:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.15),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.25),
+    0 0 15px rgba(140, 111, 86, 0.4),
+    4px 8px 0 #341307;
+  border-color: #4a2010;
+}
+
+.featureCard:hover .featureSvg {
+  filter: drop-shadow(3px 3px 0 #341307);
+  transform: scale(1.05);
+}
+
+/* Feature title - pixel font */
+.featureTitle {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 0.7rem;
+  color: #A60505;
+  margin-bottom: 0.75rem;
+  text-shadow: 2px 2px 0 #730303;
+  line-height: 1.6;
+}
+
+/* Feature description - readable font */
+.featureDescription {
+  font-size: 0.95rem;
+  color: #e0e0e0;
+  line-height: 1.5;
+}
+
+/* Light mode adjustments */
+:global([data-theme='light']) .features {
+  background: linear-gradient(
+    180deg,
+    #e8e8f0 0%,
+    #f5f5fa 100%
+  );
+}
+
+:global([data-theme='light']) .featureCard {
+  background: #8C6F56;
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.15),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.25),
+    4px 4px 0 #341307;
+}
+
+:global([data-theme='light']) .featureDescription {
+  color: #f0f0f0;
 }
