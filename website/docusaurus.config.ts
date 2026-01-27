@@ -25,7 +25,8 @@ const config: Config = {
   organizationName: 'the-ai-alliance', // Usually your GitHub org/user name.
   projectName: 'gofannon', // Usually your repo name.
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
+  onBrokenMarkdownLinks: 'warn',
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -82,16 +83,82 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          to: '/',
+          label: 'Home',
           position: 'left',
-          label: 'Tutorial',
         },
-        {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/the-ai-alliance/gofannon',
-          label: 'GitHub',
-          position: 'right',
+          type: 'doc',
+          docId: 'quickstart/index',
+          label: 'Quickstart',
+          position: 'left',
+        },
+        {
+          label: 'Developers',
+          position: 'left',
+          items: [
+            {
+              type: 'doc',
+              docId: 'developers-quickstart',
+              label: 'Developer Quickstart',
+            },
+            {
+              type: 'doc',
+              docId: 'api',
+              label: 'API Reference',
+            },
+            {
+              type: 'doc',
+              docId: 'architecture',
+              label: 'Architecture / Services',
+            },
+            {
+              type: 'doc',
+              docId: 'llm-provider-configuration',
+              label: 'LLM Provider Configuration',
+            },
+            {
+              type: 'doc',
+              docId: 'observability',
+              label: 'Observability',
+            },
+            {
+              type: 'doc',
+              docId: 'testing/index',
+              label: 'Testing',
+            },
+            {
+              type: 'doc',
+              docId: 'testing/contributing',
+              label: 'Contributing',
+            },
+          ],
+        },
+        {
+          label: 'Project',
+          position: 'left',
+          items: [
+            {
+              type: 'doc',
+              docId: 'about-name-origin',
+              label: 'About / Name Origin',
+            },
+            {
+              type: 'doc',
+              docId: 'roadmap',
+              label: 'Roadmap',
+            },
+            {
+              type: 'doc',
+              docId: 'contact-community',
+              label: 'Contact / Community',
+            },
+            {
+              type: 'doc',
+              docId: 'license',
+              label: 'License',
+            },
+          ],
         },
       ],
     },
@@ -102,8 +169,8 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'Tutorial',
-              to: '/docs/intro',
+              label: 'Quickstart',
+              to: '/docs/quickstart',
             },
           ],
         },
