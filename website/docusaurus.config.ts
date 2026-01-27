@@ -83,16 +83,82 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          to: '/',
+          label: 'Home',
           position: 'left',
-          label: 'Docs',
         },
-        {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/the-ai-alliance/gofannon',
-          label: 'GitHub',
-          position: 'right',
+          type: 'doc',
+          docId: 'quickstart/index',
+          label: 'Quickstart',
+          position: 'left',
+        },
+        {
+          label: 'Developers',
+          position: 'left',
+          items: [
+            {
+              type: 'doc',
+              docId: 'developers-quickstart',
+              label: 'Developer Quickstart',
+            },
+            {
+              type: 'doc',
+              docId: 'api',
+              label: 'API Reference',
+            },
+            {
+              type: 'doc',
+              docId: 'architecture',
+              label: 'Architecture / Services',
+            },
+            {
+              type: 'doc',
+              docId: 'llm-provider-configuration',
+              label: 'LLM Provider Configuration',
+            },
+            {
+              type: 'doc',
+              docId: 'observability',
+              label: 'Observability',
+            },
+            {
+              type: 'doc',
+              docId: 'testing/index',
+              label: 'Testing',
+            },
+            {
+              type: 'doc',
+              docId: 'testing/contributing',
+              label: 'Contributing',
+            },
+          ],
+        },
+        {
+          label: 'Project',
+          position: 'left',
+          items: [
+            {
+              type: 'doc',
+              docId: 'about-name-origin',
+              label: 'About / Name Origin',
+            },
+            {
+              type: 'doc',
+              docId: 'roadmap',
+              label: 'Roadmap',
+            },
+            {
+              type: 'doc',
+              docId: 'contact-community',
+              label: 'Contact / Community',
+            },
+            {
+              type: 'doc',
+              docId: 'license',
+              label: 'License',
+            },
+          ],
         },
       ],
     },
