@@ -21,6 +21,7 @@ function HomepageHeader() {
       <div className="container">
         <div className={styles.heroInner}>
           <div className={styles.heroCopy}>
+            <div className={styles.heroGofannon}>gofannon</div>
             <div className={styles.heroBadge}>Prototype-ready agents</div>
             <Heading as="h1" className={styles.heroTitle}>
               Prototype AI Agents

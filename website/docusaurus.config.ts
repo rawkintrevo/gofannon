@@ -78,7 +78,7 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Gofannon Docs',
+      title: 'Project Docs',
       logo: {
         alt: 'TODO: Create logo SVG',
         src: 'img/logo.svg',

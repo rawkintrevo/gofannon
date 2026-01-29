@@ -93,6 +93,14 @@
   max-width: 560px;
 }
 
+.heroGofannon {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 3rem;
+  color: var(--rpg-secondary-light);
+  text-shadow: 3px 3px 0 var(--rpg-secondary);
+  margin-bottom: 0.5rem;
+}
+
 .heroBadge {
   display: inline-flex;
   align-items: center;
