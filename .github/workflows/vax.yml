@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run VAX evidence scan
-        uses: AtA-Systems/vax-security-scan@v1
+        uses: AtA-Systems/vax-security-scan@v0.0.2
         with:
           vax_key: ${{ secrets.VAX_KEY }}
           scan_types: asvs-l1,asvs-l2
