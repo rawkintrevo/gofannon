@@ -53,7 +53,11 @@ const SavedAgentsPage = () => {
             }
           })
         );
-        setAgents(withDeployment);
+        setAgents(
+          withDeployment.sort((a, b) =>
+            (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+          )
+        );
       } catch (err) {
         setError('Failed to load saved agents.');
         console.error(err);
@@ -195,8 +199,8 @@ const SavedAgentsPage = () => {
                           <VisibilityIcon sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Sandbox" arrow>
-                        <IconButton size="small" onClick={() => navigate(`/agent/${agent._id}/sandbox`)}>
+                      <Tooltip title="Run" arrow>
+                        <IconButton size="small" onClick={() => navigate(`/agent/${agent._id}/runs`)}>
                           <PlayArrowIcon sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Tooltip>

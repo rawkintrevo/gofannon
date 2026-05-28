@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import traceback
+import warnings
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -15,7 +16,7 @@ from fastapi.security import OAuth2PasswordBearer
 from agent_factory.remote_mcp_client import RemoteMCPClient
 from config import settings
 from config.provider_config import PROVIDER_CONFIG as APP_PROVIDER_CONFIG
-from models.agent import Agent
+from models.agent import Agent, LlmSettings
 from models.chat import ChatRequest
 from services.database_service import DatabaseService, get_database_service
 from services.llm_service import call_llm
@@ -24,13 +25,94 @@ from services.observability_service import (
     get_observability_service,
     get_sanitized_request_data,
 )
+from services.agent_trace import (
+    Trace,
+    bind_trace,
+    capture_user_io,
+    get_current_trace,
+)
 from services.user_service import UserService, get_user_service
-
+from services.data_store_service import (
+    DataStoreService,
+    AgentDataStoreProxy,
+    get_data_store_service,
+)
+from typing import Generator
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 
-def get_db() -> DatabaseService:
+def validate_output_against_schema(
+    result: Any,
+    output_schema: Optional[Dict[str, Any]],
+) -> List[str]:
+    """Return a list of human-readable warnings about schema mismatches.
+
+    This is advisory only — we never fail a run for schema drift because the
+    composer LLM's output compliance is best-effort. Warnings surface back to
+    the sandbox UI so the user can tell their agent is returning the wrong
+    shape (e.g. the classic "returned {outputText: ...} instead of the
+    declared keys"), and can regenerate or manually edit the code.
+
+    Checks performed:
+      - Result must be a dict (required by the agent framework).
+      - Every declared output key must be present.
+      - No extra keys beyond those declared.
+      - Each value's Python type must match the declared type string.
+        Declared types: "string" | "integer" | "float" | "boolean" | "list" | "json"
+        "json" accepts anything (used as an escape hatch).
+    """
+    if not output_schema:
+        return []
+    warnings: List[str] = []
+    if not isinstance(result, dict):
+        return [
+            f"Output is not a dict (got {type(result).__name__}). "
+            f"Expected keys: {sorted(output_schema.keys())}."
+        ]
+    declared = set(output_schema.keys())
+    actual = set(result.keys())
+    missing = declared - actual
+    extra = actual - declared
+    if missing:
+        warnings.append(f"Missing required output keys: {sorted(missing)}")
+    if extra:
+        warnings.append(
+            f"Unexpected output keys not in schema: {sorted(extra)}. "
+            f"The composer LLM may have ignored the output schema — "
+            f"try regenerating the code, or update the schema."
+        )
+    # Type checks on keys that are present (missing ones already warned above)
+    type_checks = {
+        "string": (str,),
+        "integer": (int,),
+        "float": (int, float),        # ints are valid floats
+        "boolean": (bool,),
+        "list": (list,),
+        "json": None,                 # any type
+    }
+    for key in declared & actual:
+        declared_type = output_schema[key]
+        allowed = type_checks.get(declared_type)
+        if allowed is None:
+            continue  # unknown or "json" type: skip
+        value = result[key]
+        # bool is a subclass of int in Python; treat it as its own type so
+        # {"count": True} doesn't silently pass a declared "integer" field.
+        if declared_type == "integer" and isinstance(value, bool):
+            warnings.append(
+                f"Output '{key}' is a boolean but schema declares integer."
+            )
+            continue
+        if not isinstance(value, allowed):
+            warnings.append(
+                f"Output '{key}' has type {type(value).__name__} "
+                f"but schema declares {declared_type}."
+            )
+    return warnings
+
+
+def get_db() -> Generator[DatabaseService, None, None]:
     yield get_database_service(settings)
 
 
@@ -51,12 +133,33 @@ def require_admin_access(admin_password: str | None = Header(default=None, alias
         raise HTTPException(status_code=401, detail="Invalid admin password")
 
 
-async def _execute_agent_code(code: str, input_dict: dict, tools: dict, gofannon_agents: List[str], db: DatabaseService):
-    """Helper function for recursive execution of agent code."""
+async def _execute_agent_code(
+    code: str, 
+    input_dict: dict, 
+    tools: dict, 
+    gofannon_agents: List[str], 
+    db: DatabaseService,
+    user_id: Optional[str] = None,
+    user_basic_info: Optional[Dict[str, Any]] = None,
+    llm_settings: Optional[LlmSettings] = None,
+    agent_name: Optional[str] = None,
+    trace: Optional[Trace] = None,
+):
+    """Helper function for recursive execution of agent code.
+
+    When ``trace`` is non-None, structural events (agent_start, llm_call,
+    data_store, agent_end, error) plus user-origin events (stdout, log)
+    are appended to it for the duration of this call. The contextvar
+    binding lets nested layers (LLM service, data store proxy) emit too
+    without a signature change.
+    """
+    # Get user service for API key lookup if user_id is provided
+    user_service = get_user_service(db) if user_id else None
 
     class GofannonClient:
-        def __init__(self, agent_ids: List[str], db_service: DatabaseService):
+        def __init__(self, agent_ids: List[str], db_service: DatabaseService, llm_settings: Optional[LlmSettings] = None):
             self.db = db_service
+            self.llm_settings = llm_settings
             self.agent_map = {}
             if agent_ids:
                 try:
@@ -72,24 +175,204 @@ async def _execute_agent_code(code: str, input_dict: dict, tools: dict, gofannon
             if not agent_to_run:
                 raise ValueError(f"Gofannon agent '{agent_name}' not found or not imported for this run.")
 
-            # Recursive call to the execution helper
-            return await _execute_agent_code(
+            # Recursive call. The active trace (if any) flows in via the
+            # contextvar so nested events appear in the same trace as
+            # the parent's, with depth incremented automatically by
+            # Trace.agent_start. We discard the ops_log here — only the
+            # top-level sandbox run surfaces ops to the UI's data-store
+            # panel; nested data store activity is still in the trace.
+            active_trace = get_current_trace()
+            result, _nested_ops = await _execute_agent_code(
                 code=agent_to_run.code,
                 input_dict=input_dict,
                 tools=agent_to_run.tools,
                 gofannon_agents=agent_to_run.gofannon_agents,
                 db=self.db,
+                user_id=user_id,
+                user_basic_info=user_basic_info,
+                llm_settings=self.llm_settings,
+                agent_name=agent_to_run.name,
+                trace=active_trace,
             )
+
+            return result
+
+    # Helper to look up a model's context window from provider config
+    def get_context_window(provider: str, model: str) -> int:
+        """Look up the context window for a provider/model pair. Returns token limit."""
+        return (
+            APP_PROVIDER_CONFIG.get(provider, {})
+            .get("models", {})
+            .get(model, {})
+            .get("context_window", 128000)  # safe default
+        )
+
+    def count_tokens(text: str, provider: str = "anthropic", model: str = "claude-opus-4-6") -> int:
+        """Count exact tokens for text using litellm's tokenizer.
+        Use this for accurate pre-flight checks before calling call_llm.
+        Much more accurate than character-based estimation."""
+        try:
+            import litellm as _litellm
+            return _litellm.token_counter(
+                model=f"{provider}/{model}",
+                text=text
+            )
+        except Exception:
+            # Fallback: conservative estimate at 2.5 chars/token
+            return int(len(str(text)) / 2.5)
+
+    def count_message_tokens(messages: list, provider: str = "anthropic", model: str = "claude-opus-4-6") -> int:
+        """Count exact tokens for a messages list using litellm's tokenizer.
+        Pass the full messages list you'd send to call_llm for accurate counting."""
+        try:
+            import litellm as _litellm
+            return _litellm.token_counter(
+                model=f"{provider}/{model}",
+                messages=messages
+            )
+        except Exception:
+            # Fallback: conservative estimate
+            total_chars = sum(len(str(m.get("content", ""))) for m in messages)
+            return int(total_chars / 2.5)
+
+    # Create a wrapped call_llm that includes user context and applies LLM settings
+    async def call_llm_with_context(
+        provider: str,
+        model: str,
+        messages: List[Dict[str, Any]],
+        parameters: Dict[str, Any],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        timeout: Optional[int] = None,
+        **kwargs
+    ):
+        """Wrapped call_llm that includes user context for API key lookup and applies LLM settings.
+        
+        Args:
+            timeout: Per-call timeout in seconds. If not set, automatically scaled
+                     based on max_tokens and reasoning_effort to avoid premature timeouts.
+        """
+        # Remove user context kwargs if they were passed by generated code
+        # (we'll set them explicitly from the outer scope)
+        kwargs.pop("user_service", None)
+        kwargs.pop("user_id", None)
+        kwargs.pop("user_basic_info", None)
+
+        # Apply LLM settings overrides if provided. Look up the
+        # per-model override by exact provider/model, so a Sonnet call
+        # gets Sonnet's overrides rather than whatever was set on the
+        # first invokable model in the list.
+        override = llm_settings.for_call(provider, model) if llm_settings else None
+        if override:
+            if override.max_tokens is not None:
+                parameters = {**parameters, "max_tokens": override.max_tokens}
+            if override.temperature is not None:
+                parameters = {**parameters, "temperature": override.temperature}
+            if override.reasoning_effort is not None:
+                if override.reasoning_effort != "disable":
+                    parameters = {**parameters, "reasoning_effort": override.reasoning_effort}
+                elif "reasoning_effort" in parameters:
+                    # User explicitly disabled reasoning, remove it
+                    parameters = {k: v for k, v in parameters.items() if k != "reasoning_effort"}
+        
+        model_info = APP_PROVIDER_CONFIG.get(provider, {}).get("models", {}).get(model, {})
+        model_max = model_info.get("parameters", {}).get("max_tokens", {}).get("max")
+        if model_max and parameters.get("max_tokens", 0) > model_max:
+            parameters = {**parameters, "max_tokens": model_max}
+
+        # Auto-scale timeout based on request complexity when no explicit timeout is set.
+        # Opus with reasoning_effort=high and max_tokens=128000 can legitimately take
+        # 15-25 minutes on Bedrock. A 600s default kills these calls unnecessarily.
+        if timeout is None:
+            max_tokens = parameters.get("max_tokens", 4096)
+            reasoning = parameters.get("reasoning_effort", "disable")
+
+            if reasoning in ("high",) and max_tokens >= 64000:
+                timeout = 1800  # 30 min for heavy reasoning + large output
+            elif reasoning in ("medium", "high") or max_tokens >= 64000:
+                timeout = 1200  # 20 min for moderate complexity
+            # else: falls through to DEFAULT_LLM_TIMEOUT (600s) in llm_service.py
+
+        # Auto-scale timeout based on request complexity when no explicit timeout is set.
+        # Opus with reasoning_effort=high and max_tokens=128000 can legitimately take
+        # 15-25 minutes on Bedrock. A 600s default kills these calls unnecessarily.
+        if timeout is None:
+            max_tokens = parameters.get("max_tokens", 4096)
+            reasoning = parameters.get("reasoning_effort", "disable")
+
+            if reasoning in ("high",) and max_tokens >= 64000:
+                timeout = 1800  # 30 min for heavy reasoning + large output
+            elif reasoning in ("medium", "high") or max_tokens >= 64000:
+                timeout = 1200  # 20 min for moderate complexity
+            # else: falls through to DEFAULT_LLM_TIMEOUT (600s) in llm_service.py
+
+        ctx_window = get_context_window(provider, model)
+        print(f">>> call_llm {provider}/{model} context_window={ctx_window:,} max_tokens={parameters.get('max_tokens')} temperature={parameters.get('temperature')} reasoning_effort={parameters.get('reasoning_effort')} timeout={timeout or 'default'}", flush=True)
+
+        # Trace the LLM call. Start time captured before so we can
+        # compute duration even if the call raises.
+        active_trace = get_current_trace()
+        import time as _time
+        _llm_start = _time.monotonic()
+        _llm_error = None
+        _llm_resp = None
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Pydantic serializer warnings")
+                _llm_resp = await call_llm(
+                    provider=provider,
+                    model=model,
+                    messages=messages,
+                    parameters=parameters,
+                    tools=tools,
+                    user_service=user_service,
+                    user_id=user_id,
+                    user_basic_info=user_basic_info,
+                    timeout=timeout,
+                    **kwargs
+                )
+        except Exception as _llm_exc:
+            _llm_error = f"{type(_llm_exc).__name__}: {_llm_exc}"
+            raise
+        finally:
+            if active_trace is not None:
+                _llm_duration_ms = (_time.monotonic() - _llm_start) * 1000.0
+                # call_llm wrapper here returns (content_str, thoughts);
+                # token counts aren't directly exposed. Leaving them as
+                # None — a follow-up that surfaces usage from the LLM
+                # service can fill these in.
+                active_trace.llm_call(
+                    provider=provider,
+                    model=model,
+                    duration_ms=_llm_duration_ms,
+                    error=_llm_error,
+                )
+        return _llm_resp
+
+    # Create data store proxy for agent access, with a shared ops_log so the
+    # sandbox UI can show live operation timelines.
+    data_store_service = get_data_store_service(db)
+    data_store_ops_log: List[Dict[str, Any]] = []
+    data_store_proxy = AgentDataStoreProxy(
+        service=data_store_service,
+        user_id=user_id or "anonymous",
+        agent_name=agent_name or "unknown",
+        default_namespace="default",
+        ops_log=data_store_ops_log,
+    )
 
     exec_globals = {
         "RemoteMCPClient": RemoteMCPClient,
-        "call_llm": call_llm,  # Use centralized LLM service
+        "call_llm": call_llm_with_context,  # Use wrapped LLM service with user context
+        "get_context_window": get_context_window,  # Look up model context window limits
+        "count_tokens": count_tokens,  # Count exact tokens for text (uses litellm tokenizer)
+        "count_message_tokens": count_message_tokens,  # Count exact tokens for messages list
         "asyncio": asyncio,
         "httpx": httpx,
         "re": __import__('re'),
         "json": __import__('json'),
         "http_client": httpx.AsyncClient(follow_redirects=True),  # Follow redirects automatically
-        "gofannon_client": GofannonClient(gofannon_agents, db),
+        "gofannon_client": GofannonClient(gofannon_agents, db, llm_settings),
+        "data_store": data_store_proxy,
         "__builtins__": __builtins__,
     }
 
@@ -103,8 +386,41 @@ async def _execute_agent_code(code: str, input_dict: dict, tools: dict, gofannon
     if not run_function or not asyncio.iscoroutinefunction(run_function):
         raise ValueError("Code did not define an 'async def run(input_dict, tools)' function.")
 
-    result = await run_function(input_dict=input_dict, tools=tools)
-    return result
+    # Trace integration. When trace is provided, every event from this
+    # invocation (and any nested gofannon-client calls) lands in it.
+    # capture_user_io routes stdout/stderr/logging into the trace as
+    # user-origin events. bind_trace exposes the trace to nested layers
+    # via contextvar so the LLM/data-store wrappers can emit without
+    # threading the collector through every signature.
+    if trace is not None:
+        _agent_start_ms = trace.agent_start(
+            agent_name=agent_name or "unknown",
+            agent_id=None,
+            called_by=None,
+        )
+        with bind_trace(trace), capture_user_io(trace):
+            try:
+                result = await run_function(input_dict=input_dict, tools=tools)
+                trace.agent_end(
+                    agent_name=agent_name or "unknown",
+                    start_ms=_agent_start_ms,
+                    outcome="success",
+                )
+            except Exception as _exc:
+                trace.error(_exc)
+                trace.agent_end(
+                    agent_name=agent_name or "unknown",
+                    start_ms=_agent_start_ms,
+                    outcome="error",
+                )
+                raise
+    else:
+        result = await run_function(input_dict=input_dict, tools=tools)
+
+    # Return both the agent's return value and the accumulated ops log so
+    # the sandbox UI can render the live timeline. Callers that don't want
+    # ops (run_deployed_agent, nested agent calls) can discard the second tuple.
+    return result, data_store_ops_log
 
 
 async def process_chat(ticket_id: str, request: ChatRequest, user: dict, req: Request):
@@ -155,12 +471,24 @@ async def process_chat(ticket_id: str, request: ChatRequest, user: dict, req: Re
             # The user query is always mapped to 'inputText'
             input_dict["inputText"] = last_user_message["content"]
 
-            result = await _execute_agent_code(
+            # Extract LLM settings from request parameters for agent execution
+            llm_settings = None
+            if any(k in request.parameters for k in ["max_tokens", "maxTokens", "temperature", "reasoning_effort", "reasoningEffort"]):
+                llm_settings = LlmSettings(
+                    max_tokens=request.parameters.get("max_tokens") or request.parameters.get("maxTokens"),
+                    temperature=request.parameters.get("temperature"),
+                    reasoning_effort=request.parameters.get("reasoning_effort") or request.parameters.get("reasoningEffort"),
+                )
+
+            result, _ops = await _execute_agent_code(
                 code=agent.code,
                 input_dict=input_dict,
                 tools=agent.tools,
                 gofannon_agents=agent.gofannon_agents,
                 db=db_service,
+                user_id=user.get("uid"),
+                user_basic_info=user_basic_info,
+                llm_settings=llm_settings,
             )
 
             if isinstance(result, dict):
@@ -235,26 +563,57 @@ async def process_chat(ticket_id: str, request: ChatRequest, user: dict, req: Re
         db_service.save("tickets", ticket_id, ticket_data)
 
 
-def get_available_providers():
+def get_available_providers(user_id: Optional[str] = None, user_basic_info: Optional[Dict[str, Any]] = None):
+    """
+    Get available providers.
+    
+    If user_id is provided, checks user's stored API keys first,
+    then falls back to environment variables.
+    """
     db_service = get_database_service(settings)
     available_providers: Dict[str, Any] = {}
+    
+    # Get user service if user_id is provided
+    user_service = None
+    if user_id:
+        user_service = get_user_service(db_service)
+    
     for provider, config in APP_PROVIDER_CONFIG.items():
         api_key_env_var = config.get("api_key_env_var")
-        if not api_key_env_var or os.getenv(api_key_env_var):
+        
+        # Check if provider is available
+        is_available = False
+        
+        # First, check if user has a stored API key for this provider
+        if user_service and user_id:
+            user_key = user_service.get_effective_api_key(user_id, provider, basic_info=user_basic_info)
+            if user_key:
+                is_available = True
+        
+        # If no user key, check environment variable
+        if not is_available and (not api_key_env_var or os.getenv(api_key_env_var)):
+            is_available = True
+        
+        # Ollama doesn't require an API key
+        if not api_key_env_var:
+            is_available = True
+        
+        if is_available:
             available_providers[provider] = config
 
     try:
         all_deployments = db_service.list_all("deployments")
         gofannon_models: Dict[str, Any] = {}
         for deployment_doc in all_deployments:
+            dep_id = deployment_doc.get("_id")
+            agent_id = deployment_doc.get("agentId")
             try:
-                agent_id = deployment_doc["agentId"]
                 agent_doc = db_service.get("agents", agent_id)
                 agent = Agent(**agent_doc)
 
-                friendly_name = deployment_doc["_id"]
+                friendly_name = dep_id
 
-                parameters = agent.input_schema
+                parameters = agent.input_schema or {}
                 formatted_params = {}
                 for name, schema in parameters.items():
                     formatted_params[name] = {
@@ -268,8 +627,24 @@ def get_available_providers():
                     "description": agent.description,
                     "parameters": formatted_params,
                 }
+            except HTTPException as agent_load_e:
+                if agent_load_e.status_code == 404:
+                    # Orphan: agent was deleted but deployment doc remained.
+                    # Self-heal by removing the stale deployment.
+                    print(
+                        f"Removing orphan deployment '{dep_id}' "
+                        f"(agent '{agent_id}' not found)"
+                    )
+                    try:
+                        db_service.delete("deployments", dep_id)
+                    except Exception as del_e:
+                        print(
+                            f"Failed to delete orphan deployment '{dep_id}': {del_e}"
+                        )
+                    continue
+                print(f"Skipping deployed agent '{dep_id}' due to error: {agent_load_e}")
             except Exception as agent_load_e:
-                print(f"Skipping deployed agent '{deployment_doc.get('_id')}' due to error: {agent_load_e}")
+                print(f"Skipping deployed agent '{dep_id}' due to error: {agent_load_e}")
 
         if gofannon_models:
             available_providers["gofannon"] = {"models": gofannon_models}
@@ -332,18 +707,44 @@ async def deploy_agent(agent_id: str, db: DatabaseService):
 
 
 async def undeploy_agent(agent_id: str, db: DatabaseService):
-    agent_doc = db.get("agents", agent_id)
-    agent = Agent(**agent_doc)
-    friendly_name = agent.friendly_name
-    if not friendly_name:
-        return
+    """Remove all deployment docs that point at this agent.
 
+    Scans the `deployments` collection by the `agentId` field rather than
+    trusting `agent.friendly_name`, so that:
+      - Renames (friendly_name changed after deployment) are handled.
+      - Orphans from prior partial-failure deletes are cleaned up.
+      - Callers don't need to pre-check with `get_agent_deployment`.
+    """
     try:
-        db.delete("deployments", friendly_name)
-    except HTTPException as e:
-        if e.status_code == 404:
-            return
-        raise e
+        deployments = db.find("deployments", {"agentId": agent_id})
+    except Exception as e:
+        # Fallback: if find() fails for any reason, fall back to the
+        # friendly_name lookup so we still delete the primary deployment.
+        print(f"undeploy_agent: find() failed ({e}); falling back to friendly_name lookup")
+        deployments = []
+        try:
+            agent_doc = db.get("agents", agent_id)
+            agent = Agent(**agent_doc)
+            if agent.friendly_name:
+                try:
+                    deployments = [db.get("deployments", agent.friendly_name)]
+                except HTTPException as get_e:
+                    if get_e.status_code != 404:
+                        raise
+        except HTTPException as agent_e:
+            if agent_e.status_code != 404:
+                raise
+
+    for dep in deployments:
+        dep_id = dep.get("_id")
+        if not dep_id:
+            continue
+        try:
+            db.delete("deployments", dep_id)
+        except HTTPException as e:
+            if e.status_code == 404:
+                continue
+            raise
 
 
 async def get_agent_deployment(agent_id: str, db: DatabaseService):
@@ -365,25 +766,179 @@ async def get_agent_deployment(agent_id: str, db: DatabaseService):
         raise e
 
 
+async def build_agent_chain(
+    root_agent_id: str,
+    db: DatabaseService,
+    max_depth: int = 8,
+) -> Dict[str, Any]:
+    """Recursively walk an agent's gofannon_agents dependencies and MCP tool
+    references to produce a nodes/edges graph suitable for rendering in the UI.
+
+    Cycle handling: if agent A transitively calls back to agent A, the edge
+    is still emitted but marked ``cyclic=True`` and the walk doesn't recurse
+    through it. This way the UI can display the cycle without us looping
+    forever on malformed graphs.
+
+    Depth cap: ``max_depth`` prevents pathological nesting. Agents reached
+    beyond the cap are emitted as ``truncated=True`` leaf nodes.
+
+    Node shapes::
+
+        {"id": "<agent_id>",  "type": "agent",
+         "name": "...", "description": "...",
+         "input_schema": {...}, "output_schema": {...},
+         "missing": False, "truncated": False}
+        {"id": "mcp:<url>",   "type": "mcp_server",
+         "url": "...", "tool_count": N, "tools": ["...", ...]}
+
+    Edge shapes::
+
+        {"from": "<agent_id>", "to": "<other_agent_id>",
+         "type": "calls", "cyclic": False}
+        {"from": "<agent_id>", "to": "mcp:<url>",
+         "type": "uses_tools", "tools": [...]}
+    """
+    nodes: Dict[str, Dict[str, Any]] = {}
+    edges: List[Dict[str, Any]] = []
+
+    async def visit(agent_id: str, depth: int, path: set):
+        # Already visited (cycle): don't recurse, but let the caller still add
+        # the edge. Returning None signals the caller to mark the edge cyclic.
+        if agent_id in path:
+            return "cycle"
+        # Depth cap: emit a truncated placeholder and stop.
+        if depth > max_depth:
+            if agent_id not in nodes:
+                try:
+                    agent_doc = db.get("agents", agent_id)
+                    agent = Agent(**agent_doc)
+                    nodes[agent_id] = {
+                        "id": agent_id,
+                        "type": "agent",
+                        "name": agent.name,
+                        "description": agent.description,
+                        "input_schema": agent.input_schema,
+                        "output_schema": agent.output_schema,
+                        "missing": False,
+                        "truncated": True,
+                    }
+                except HTTPException:
+                    nodes[agent_id] = {
+                        "id": agent_id, "type": "agent", "name": "(missing)",
+                        "description": "", "input_schema": {}, "output_schema": {},
+                        "missing": True, "truncated": True,
+                    }
+            return "ok"
+
+        # Already have this node from a different path — still walk its
+        # children (shared dependency), but don't re-add it.
+        already_have_node = agent_id in nodes
+
+        if not already_have_node:
+            try:
+                agent_doc = db.get("agents", agent_id)
+                agent = Agent(**agent_doc)
+            except HTTPException as e:
+                if e.status_code == 404:
+                    nodes[agent_id] = {
+                        "id": agent_id, "type": "agent", "name": "(missing)",
+                        "description": "",
+                        "input_schema": {}, "output_schema": {},
+                        "missing": True, "truncated": False,
+                    }
+                    return "ok"
+                raise
+            nodes[agent_id] = {
+                "id": agent_id,
+                "type": "agent",
+                "name": agent.name,
+                "description": agent.description,
+                "input_schema": agent.input_schema,
+                "output_schema": agent.output_schema,
+                "missing": False,
+                "truncated": False,
+            }
+        else:
+            # Load again for traversal — cheap, and avoids caching Agent
+            # objects alongside the nodes dict.
+            agent_doc = db.get("agents", agent_id)
+            agent = Agent(**agent_doc)
+
+        # MCP tool edges
+        for url, tool_names in (agent.tools or {}).items():
+            mcp_node_id = f"mcp:{url}"
+            if mcp_node_id not in nodes:
+                nodes[mcp_node_id] = {
+                    "id": mcp_node_id,
+                    "type": "mcp_server",
+                    "url": url,
+                    "tool_count": len(tool_names or []),
+                    "tools": list(tool_names or []),
+                }
+            edges.append({
+                "from": agent_id,
+                "to": mcp_node_id,
+                "type": "uses_tools",
+                "tools": list(tool_names or []),
+            })
+
+        # Gofannon agent edges (and recurse)
+        for dep_id in (agent.gofannon_agents or []):
+            new_path = path | {agent_id}
+            outcome = await visit(dep_id, depth + 1, new_path)
+            edges.append({
+                "from": agent_id,
+                "to": dep_id,
+                "type": "calls",
+                "cyclic": outcome == "cycle",
+            })
+
+        return "ok"
+
+    await visit(root_agent_id, 0, set())
+    return {"root": root_agent_id, "nodes": nodes, "edges": edges}
+
+
 async def list_deployments(db: DatabaseService):
     try:
         all_deployments_docs = db.list_all("deployments")
         deployment_infos = []
         for dep_doc in all_deployments_docs:
+            dep_id = dep_doc.get("_id")
+            agent_id = dep_doc.get("agentId")
             try:
-                agent_doc = db.get("agents", dep_doc["agentId"])
+                agent_doc = db.get("agents", agent_id)
                 agent = Agent(**agent_doc)
                 dep_info = {
-                    "friendlyName": dep_doc["_id"],
-                    "agentId": dep_doc["agentId"],
+                    "friendlyName": dep_id,
+                    "agentId": agent_id,
                     "description": agent.description,
                     "inputSchema": agent.input_schema,
                     "outputSchema": agent.output_schema,
                 }
                 deployment_infos.append(dep_info)
+            except HTTPException as e:
+                if e.status_code == 404:
+                    # Orphan: agent was deleted but deployment doc remained.
+                    # Self-heal by removing the stale deployment.
+                    print(
+                        f"Removing orphan deployment '{dep_id}' "
+                        f"(agent '{agent_id}' not found)"
+                    )
+                    try:
+                        db.delete("deployments", dep_id)
+                    except Exception as del_e:
+                        print(f"Failed to delete orphan deployment '{dep_id}': {del_e}")
+                    continue
+                print(
+                    f"Skipping deployment '{dep_id}' due to error fetching "
+                    f"agent '{agent_id}': {e}"
+                )
+                continue
             except Exception as e:
                 print(
-                    f"Skipping deployment '{dep_doc['_id']}' due to error fetching agent '{dep_doc['agentId']}': {e}"
+                    f"Skipping deployment '{dep_id}' due to error fetching "
+                    f"agent '{agent_id}': {e}"
                 )
                 continue
         return deployment_infos
@@ -391,7 +946,14 @@ async def list_deployments(db: DatabaseService):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def run_deployed_agent(friendly_name: str, input_dict: dict, db: DatabaseService):
+async def run_deployed_agent(
+    friendly_name: str, 
+    input_dict: dict, 
+    db: DatabaseService,
+    user_id: Optional[str] = None,
+    user_basic_info: Optional[Dict[str, Any]] = None,
+    llm_settings: Optional[LlmSettings] = None,
+):
     try:
         deployment_doc = db.get("deployments", friendly_name)
         agent_id = deployment_doc["agentId"]
@@ -399,12 +961,15 @@ async def run_deployed_agent(friendly_name: str, input_dict: dict, db: DatabaseS
         agent_data = db.get("agents", agent_id)
         agent = Agent(**agent_data)
 
-        result = await _execute_agent_code(
+        result, _ops = await _execute_agent_code(
             code=agent.code,
             input_dict=input_dict,
             tools=agent.tools,
             gofannon_agents=agent.gofannon_agents,
             db=db,
+            user_id=user_id,
+            user_basic_info=user_basic_info,
+            llm_settings=llm_settings,
         )
         return result
     except HTTPException as e:
@@ -428,6 +993,7 @@ __all__ = [
     "get_agent_deployment",
     "list_deployments",
     "run_deployed_agent",
+    "build_agent_chain",
     "_execute_agent_code",
     "oauth2_scheme",
 ]

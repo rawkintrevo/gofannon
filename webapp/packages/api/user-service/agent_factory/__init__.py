@@ -4,7 +4,8 @@ from .prompts import how_to_use_tools, \
     how_to_use_llm, \
     what_to_do_prompt_template, \
     how_to_use_swagger_tools, \
-    how_to_use_gofannon_agents
+    how_to_use_gofannon_agents, \
+    how_to_use_data_store
 from models.agent import GenerateCodeRequest, GenerateCodeResponse, Agent
 import json
 import asyncio
@@ -17,7 +18,7 @@ from config.provider_config import PROVIDER_CONFIG
 
 ensure_litellm_logging()
 
-async def generate_agent_code(request: GenerateCodeRequest):
+async def generate_agent_code(request: GenerateCodeRequest, user_id: str = None, user_basic_info: dict = None):
     """
     Generates agent code based on the provided configuration.
     """
@@ -93,6 +94,10 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
 
             model_docs += f"**Configured Parameters:** `{json.dumps(configured_params)}`\n"
 
+            context_window = model_info.get("context_window")
+            if context_window:
+                model_docs += f"**Context Window:** {context_window:,} tokens (maximum input size — prompts exceeding this will fail)\n"
+
             selected_tool = None
             if selected_tool_id:
                 selected_tool = next(
@@ -153,6 +158,9 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
                
     if request.invokable_models:
         system_prompt_parts.append(how_to_use_llm)
+    
+    # Data store is always available
+    system_prompt_parts.append(how_to_use_data_store)
     system_prompt_parts.append(what_to_do)
     system_prompt = "\n\n".join(system_prompt_parts)  
     
@@ -193,6 +201,9 @@ result = await gofannon_client.call(agent_name='{agent.name}', input_dict={{...}
             messages=code_gen_messages,
             parameters=config,
             tools=None,  # Don't pass tools - we want code generation, not tool execution
+            user_id=user_id,
+            user_basic_info=user_basic_info,
+            timeout=1800,
         )
 
     # ---- Friendly Name and Docstring Generation Task ----
@@ -231,6 +242,8 @@ Do not include any other text or markdown formatting around the JSON object.
             model=model,
             messages=name_doc_messages,
             parameters=name_doc_config,
+            user_id=user_id,
+            user_basic_info=user_basic_info,
         )
         return content
 

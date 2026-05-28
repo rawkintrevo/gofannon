@@ -8,7 +8,9 @@ import SavedAgentsPage from '../pages/SavedAgentsPage';
 import DeployedApisPage from '../pages/DeployedApisPage';
 import DemoAppsPage from '../pages/DemoAppsPage';
 import ViewDemoAppPage from '../pages/ViewDemoAppPage';
-import SandboxScreen from '../pages/AgentCreationFlow/SandboxScreen';
+import DataStoresPage from '../pages/DataStoresPage';
+import DataStoreBrowser from '../pages/DataStoreBrowser';
+import RunsScreen from '../pages/AgentCreationFlow/RunsScreen';
 import DeployScreen from '../pages/AgentCreationFlow/DeployScreen';
 import SelectApisScreen from '../pages/DemoCreationFlow/SelectApisScreen';
 import SelectModelScreen from '../pages/DemoCreationFlow/SelectModelScreen';
@@ -50,6 +52,14 @@ export const defaultRoutes = [
     element: <DemoAppsPage />,
   },
   {
+    path: '/data-stores',
+    element: <DataStoresPage />,
+  },
+  {
+    path: '/data-stores/:namespace',
+    element: <DataStoreBrowser />,
+  },
+  {
     path: '/profile/:section?',
     element: <ProfilePage />,
   },
@@ -79,10 +89,10 @@ export const defaultRoutes = [
     ),
   },
   {
-    path: '/agent/:agentId/sandbox',
+    path: '/agent/:agentId/runs/:runId?',
     element: (
       <AgentCreationFlowProvider>
-        <SandboxScreen />
+        <RunsScreen />
       </AgentCreationFlowProvider>
     ),
   },
@@ -99,7 +109,7 @@ export const defaultRoutes = [
       { path: 'description', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
       { path: 'schemas', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
       { path: 'code', element: <Navigate to="/create-agent" replace />, private: false, layout: false }, // Legacy redirect
-      { path: 'sandbox', element: <SandboxScreen />, private: false, layout: false },
+      { path: 'sandbox', element: <RunsScreen />, private: false, layout: false },
       { path: 'deploy', element: <DeployScreen />, private: false, layout: false },
     ],
   },

@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'pnpm'
           cache-dependency-path: 'webapp/pnpm-lock.yaml'
 
@@ -37,13 +37,13 @@ jobs:
         working-directory: ./webapp/packages/webui
         run: pnpm test:coverage
 
-      - name: Upload frontend coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./webapp/packages/webui/coverage/lcov.info
-          flags: frontend
-          name: frontend-coverage
-          fail_ci_if_error: true
+      # - name: Upload frontend coverage to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     files: ./webapp/packages/webui/coverage/lcov.info
+      #     flags: frontend
+      #     name: frontend-coverage
+      #     fail_ci_if_error: true
 
       - name: Check frontend coverage threshold
         working-directory: ./webapp/packages/webui
@@ -74,13 +74,13 @@ jobs:
         working-directory: ./webapp/packages/api/user-service
         run: python -m pytest tests/unit -v --cov=. --cov-report=xml --cov-report=term-missing
 
-      - name: Upload backend coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./webapp/packages/api/user-service/coverage.xml
-          flags: backend
-          name: backend-coverage
-          fail_ci_if_error: true
+      # - name: Upload backend coverage to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     files: ./webapp/packages/api/user-service/coverage.xml
+      #     flags: backend
+      #     name: backend-coverage
+      #     fail_ci_if_error: true
 
       - name: Check backend coverage threshold
         working-directory: ./webapp/packages/api/user-service
@@ -102,7 +102,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'pnpm'
           cache-dependency-path: 'webapp/pnpm-lock.yaml'
 

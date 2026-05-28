@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 from pydantic.alias_generators import to_camel
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Literal, Optional, Union
 from .chat import ProviderConfig
 from datetime import datetime
 
@@ -12,6 +12,23 @@ import uuid
 class SwaggerSpec(BaseModel):
     name: str
     content: str
+
+
+class DataStoreNamespaceConfig(BaseModel):
+    """Per-agent declaration of a data-store namespace the agent uses.
+
+    Advisory: the runtime doesn't enforce access mode — an agent with
+    ``access="read"`` can still technically call ``data_store.set(...)``.
+    This metadata exists so the editor UI can surface what data each agent
+    touches and so the data-store viewer can show which agents have
+    declared reliance on which namespace.
+    """
+    namespace: str
+    access: Literal["read", "write", "both"] = "both"
+    description: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class GenerateCodeRequest(BaseModel):
     tools: Dict[str, List[str]]
@@ -48,6 +65,9 @@ class CreateAgentRequest(BaseModel):
     gofannon_agents: Optional[List[str]] = Field(default_factory=list, alias="gofannonAgents")
     composer_thoughts: Optional[Any] = Field(None, alias="composerThoughts")
     composer_model_config: Optional[ProviderConfig] = Field(None, alias="composerModelConfig")
+    data_store_config: Optional[List[DataStoreNamespaceConfig]] = Field(
+        default_factory=list, alias="dataStoreConfig"
+    )
 
     model_config = ConfigDict(
         populate_by_name=True,   
@@ -70,6 +90,9 @@ class UpdateAgentRequest(BaseModel):
     gofannon_agents: Optional[List[str]] = Field(default=None, alias="gofannonAgents")
     composer_thoughts: Optional[Any] = Field(None, alias="composerThoughts")
     composer_model_config: Optional[ProviderConfig] = Field(None, alias="composerModelConfig")
+    data_store_config: Optional[List[DataStoreNamespaceConfig]] = Field(
+        default=None, alias="dataStoreConfig"
+    )
     model_config = ConfigDict(
         populate_by_name=True,
         alias_generator=to_camel,
@@ -85,17 +108,107 @@ class Agent(CreateAgentRequest):
 
     # model_config = ConfigDict(populate_by_name=True) # model_config is inherited from CreateAgentRequest
         
+class LlmSettingsForModel(BaseModel):
+    """Per-model LLM parameter overrides."""
+    max_tokens: Optional[int] = Field(None, alias="maxTokens")
+    temperature: Optional[float] = None
+    reasoning_effort: Optional[str] = Field(None, alias="reasoningEffort")
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class LlmSettings(BaseModel):
+    """LLM settings passed from the UI to control model behavior at run time.
+
+    The UI builds this from the agent's invokableModels list. Each entry
+    has provider, model, and parameters; this object lets the run-time
+    layer look up overrides by the exact provider/model the agent is
+    calling, so a Sonnet call gets Sonnet's overrides — not Opus's just
+    because Opus happens to be invokableModels[0].
+
+    Two shapes accepted for backwards compatibility:
+
+    1. Per-model map (current):
+         {"perModel": {"bedrock/...sonnet...": {maxTokens: 16384, ...},
+                       "bedrock/...opus...":   {maxTokens: 32768, ...}}}
+
+    2. Legacy single-object (older clients):
+         {"maxTokens": 32768, "temperature": 1.0}
+       Applies to every call_llm regardless of model.
+    """
+    # Per-model overrides, keyed by "<provider>/<model>".
+    per_model: Optional[Dict[str, LlmSettingsForModel]] = Field(
+        default=None, alias="perModel"
+    )
+    # Legacy single-object fields.
+    max_tokens: Optional[int] = Field(None, alias="maxTokens")
+    temperature: Optional[float] = None
+    reasoning_effort: Optional[str] = Field(None, alias="reasoningEffort")
+    model_config = ConfigDict(populate_by_name=True)
+
+    def for_call(self, provider: str, model: str) -> Optional["LlmSettingsForModel"]:
+        """Return the override to apply for this provider/model.
+
+        Per-model wins. Falls back to the legacy single-object fields
+        wrapped in a LlmSettingsForModel for client-shape compatibility.
+        Returns None when no override applies (the agent's parameters
+        flow through unchanged).
+        """
+        if self.per_model:
+            key = f"{provider}/{model}"
+            entry = self.per_model.get(key)
+            if entry is not None:
+                return entry
+            # No exact match for this model. Don't fall through to legacy
+            # because per_model being set signals the client knows about
+            # per-model semantics; it just doesn't have settings for
+            # this particular call.
+            return None
+        # Legacy: synthesize a per-model object from the flat fields.
+        if (self.max_tokens is None
+                and self.temperature is None
+                and self.reasoning_effort is None):
+            return None
+        return LlmSettingsForModel(
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
+            reasoning_effort=self.reasoning_effort,
+        )
 
 class RunCodeRequest(BaseModel):
     code: str
     input_dict: Dict[str, Any] = Field(..., alias="inputDict")
     tools: Dict[str, List[str]]
     gofannon_agents: Optional[List[str]] = Field(default=[], alias="gofannonAgents")
+    llm_settings: Optional[LlmSettings] = Field(default=None, alias="llmSettings")
+    # Optional: when provided, the sandbox validates the agent's return value
+    # against this schema and surfaces any mismatches as schema_warnings in
+    # the response. Advisory only — never fails the run.
+    output_schema: Optional[Dict[str, Any]] = Field(default=None, alias="outputSchema")
+    # Optional: human-friendly agent name for the trace's per-event
+    # agent_name field. Used by the Progress Log UI to label runs and
+    # group nested-agent activity. Falls back to "sandbox_agent" if not
+    # provided (legacy clients).
+    friendly_name: Optional[str] = Field(default=None, alias="friendlyName")
     model_config = ConfigDict(populate_by_name=True)
 
 class RunCodeResponse(BaseModel):
     result: Optional[Any] = None
     error: Optional[str] = None
+    # Populated when output_schema was provided on the request and the
+    # agent's return value doesn't match it. Empty or missing means OK.
+    schema_warnings: Optional[List[str]] = Field(default=None, alias="schemaWarnings")
+    # Accumulated data-store operations performed during the sandbox run,
+    # in chronological order. Each entry is a dict: {op, namespace, agent,
+    # ts, key?, valuePreview?, found?, count?}. Used by the sandbox UI's
+    # live Data Store panel. None when the agent didn't touch the data store.
+    ops_log: Optional[List[Dict[str, Any]]] = Field(default=None, alias="opsLog")
+    # Per-run trace populated by services/agent_trace.py. Each entry is
+    # one of: agent_start, agent_end, llm_call, data_store, error,
+    # stdout, log, trace_truncated. The sandbox UI's Progress Log
+    # accordion groups these by run and per-agent. None for non-sandbox
+    # invocations (e.g., deployed agent runs).
+    trace: Optional[List[Dict[str, Any]]] = Field(default=None)
+    model_config = ConfigDict(populate_by_name=True)
 
 class Deployment(BaseModel):
     id: str = Field(..., alias="_id") # This will be the friendly_name

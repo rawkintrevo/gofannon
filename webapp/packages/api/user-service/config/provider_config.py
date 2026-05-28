@@ -1,6 +1,8 @@
 from .anthropic import models as anthropic_models
+from .bedrock import models as bedrock_models
 from .gemini import models as gemini_models
 from .openai import models as openai_models
+from .openrouter import models as openrouter_models
 from .perplexity import models as perplexity_models
 PROVIDER_CONFIG = {
     "openai": {
@@ -18,6 +20,14 @@ PROVIDER_CONFIG = {
     "perplexity": {
         "api_key_env_var": "PERPLEXITYAI_API_KEY",
         "models": perplexity_models,
+    },
+    "bedrock": {
+        "api_key_env_var": "AWS_BEARER_TOKEN_BEDROCK",
+        "models": bedrock_models
+    },
+    "openrouter": {
+        "api_key_env_var": "OPENROUTER_API_KEY",
+        "models": openrouter_models,
     },
     "ollama": {
         "models": {
