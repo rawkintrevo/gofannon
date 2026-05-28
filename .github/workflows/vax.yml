@@ -1,9 +1,6 @@
-name: VAX vendor assurance
+name: VAX vendor assurance (do not use)
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
